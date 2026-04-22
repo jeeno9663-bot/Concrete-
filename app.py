@@ -94,7 +94,7 @@ def get_pfa(max_agg, slump, p_passing, fwc_ratio):
     return pfa_percent / 100.0 
 
 # ==========================================
-# การจัด Layout แบบ 2 คอลัมน์ (เหมือนในภาพ)
+# การจัด Layout แบบ 2 คอลัมน์
 # ==========================================
 left_col, right_col = st.columns([1.2, 1.0], gap="large")
 
@@ -102,59 +102,67 @@ left_col, right_col = st.columns([1.2, 1.0], gap="large")
 # ฝั่งซ้าย: ข้อมูลนำเข้า (Inputs)
 # ------------------------------------------
 with left_col:
-    st.markdown("### 📋 เกณฑ์การออกแบบ (Design Criteria)")
+    st.markdown("### เกณฑ์การออกแบบ (Design Criteria)")
     with st.container():
         col1, col2 = st.columns(2)
         with col1:
-            fc_req = st.number_input("🎯 กำลังอัดที่ต้องการ (MPa)", min_value=10.0, max_value=80.0, value=30.0)
-            slump = st.slider("🛝 ค่าความยุบตัว Slump (mm)", 0, 200, 100)
+            fc_req = st.number_input("กำลังอัดเป้าหมาย (MPa)", min_value=10.0, max_value=80.0, value=30.0)
+            slump = st.slider("ค่าความยุบตัว Slump (mm)", 0, 200, 100)
         with col2:
-            max_agg_str = st.selectbox("🪨 ขนาดมวลรวมสูงสุด", ["10 mm", "20 mm", "40 mm"], index=1)
+            max_agg_str = st.selectbox("ขนาดมวลรวมสูงสุด", ["10 mm", "20 mm", "40 mm"], index=1)
             max_agg = int(max_agg_str.split()[0])
-            control_label = st.selectbox("🛡️ ระดับการควบคุมคุณภาพ", ["ดีมาก (0.8)", "ปานกลาง (0.7)", "ต่ำ (0.5)"])
+            control_label = st.selectbox("ระดับการควบคุมคุณภาพ", ["ดีมาก (0.8)", "ปานกลาง (0.7)", "ต่ำ (0.5)"])
             control_factor = float(control_label.split("(")[1].replace(")", ""))
 
     st.markdown("---")
-    st.markdown("### 🧱 คุณสมบัติของวัสดุ (Material Properties)")
+    st.markdown("### คุณสมบัติของวัสดุ (Material Properties)")
     with st.container():
         col3, col4 = st.columns(2)
         with col3:
             sg_c = st.number_input("ความถ่วงจำเพาะ ปูนซีเมนต์", value=3.15, step=0.01)
-            sg_s = st.number_input("ความถ่วงจำเพาะ ทราย", value=2.60, step=0.01)
-            sg_g = st.number_input("ความถ่วงจำเพาะ หิน", value=2.65, step=0.01)
+            sg_s = st.number_input("ความถ่วงจำเพาะ มวลรวมละเอียด", value=2.60, step=0.01)
+            sg_g = st.number_input("ความถ่วงจำเพาะ มวลรวมหยาบ", value=2.65, step=0.01)
         with col4:
-            agg_type = st.radio("ประเภทของมวลรวม", ["หินโม่ (Crushed)", "หินธรรมชาติ (Uncrushed)"])
+            agg_type = st.radio("ประเภทของมวลรวมหยาบ", ["หินโม่ (Crushed)", "หินธรรมชาติ (Uncrushed)"])
             p_passing_str = st.selectbox("ทรายผ่านตะแกรง 600 μm (%)", ["100%", "80%", "60%", "40%", "15%"], index=2)
             passing_600 = int(p_passing_str.replace("%", ""))
 
     st.markdown("---")
-    st.markdown("### 🌤️ สภาพหน้างานและสารผสม (Field Conditions)")
+    st.markdown("### สภาพหน้างานและสารผสม (Field Conditions & Admixtures)")
     with st.container():
         col5, col6 = st.columns(2)
         with col5:
-            mc_sand = st.number_input("ความชื้น ทราย (%)", value=5.0, step=0.1)
-            abs_sand = st.number_input("การดูดซึม ทราย (%)", value=1.0, step=0.1)
+            mc_sand = st.number_input("ความชื้น มวลรวมละเอียด (%)", value=5.0, step=0.1)
+            abs_sand = st.number_input("การดูดซึม มวลรวมละเอียด (%)", value=1.0, step=0.1)
         with col6:
-            mc_gravel = st.number_input("ความชื้น หิน (%)", value=2.0, step=0.1)
-            abs_gravel = st.number_input("การดูดซึม หิน (%)", value=0.5, step=0.1)
+            mc_gravel = st.number_input("ความชื้น มวลรวมหยาบ (%)", value=2.0, step=0.1)
+            abs_gravel = st.number_input("การดูดซึม มวลรวมหยาบ (%)", value=0.5, step=0.1)
             
-        admix_type = st.selectbox("การใช้สารผสมเพิ่ม (Admixtures)", ["ไม่มี (None)", "สารลดน้ำปกติ (WRA - ลด 5%)", "สารลดน้ำอย่างสูง (HRWRA - ลด 12%)"])
-        if "WRA" in admix_type and "HRWRA" not in admix_type:
-            water_reduction = 0.05
-        elif "HRWRA" in admix_type:
-            water_reduction = 0.12
+        st.write("**คุณสมบัติสารผสมเพิ่ม (Admixture Properties)**")
+        admix_type = st.selectbox("การใช้สารลดน้ำ", ["ไม่มี (None)", "กำหนดค่าเอง (Custom WRA/HRWRA)"])
+        
+        if admix_type != "ไม่มี (None)":
+            col7, col8, col9 = st.columns(3)
+            with col7:
+                water_reduction_pct = st.number_input("การลดน้ำ (%)", min_value=0.0, max_value=40.0, value=12.0, step=1.0)
+                water_reduction = water_reduction_pct / 100.0
+            with col8:
+                admix_dosage = st.number_input("ปริมาณ (ml / ปูน 100 kg)", value=1000.0, step=50.0)
+            with col9:
+                admix_sg = st.number_input("ความถ่วงจำเพาะน้ำยา", value=1.05, step=0.01)
         else:
             water_reduction = 0.0
+            admix_dosage = 0.0
+            admix_sg = 1.0
 
 # ------------------------------------------
 # ฝั่งขวา: ปุ่มคำนวณ & แสดงผลลัพธ์ (Calculation & Output)
 # ------------------------------------------
 with right_col:
-    st.markdown("<div style='background-color:#2980B9; padding:10px; border-radius:5px;'><h3 style='color:white; text-align:center; margin:0;'>📊 การประมวลผลและผลลัพธ์</h3></div>", unsafe_allow_html=True)
-    st.write("") # เว้นบรรทัด
+    st.markdown("<div style='background-color:#2980B9; padding:10px; border-radius:5px;'><h3 style='color:white; text-align:center; margin:0;'>การประมวลผลและผลลัพธ์ (Calculation & Output)</h3></div>", unsafe_allow_html=True)
+    st.write("") 
     
-    # 🎯 ปุ่มคำนวณขนาดใหญ่
-    calculate_btn = st.button("▶️ ประมวลผล (Calculate)", type="primary", use_container_width=True)
+    calculate_btn = st.button("ประมวลผล (Calculate)", type="primary", use_container_width=True)
 
     if calculate_btn:
         # --- สมองกลประมวลผล ---
@@ -168,6 +176,10 @@ with right_col:
         fwc_base = 195.0 + (0.2 * slump) - (0.4 * max_agg)
         fwc = fwc_base * (1 - water_reduction)
         cc = fwc / wc
+        
+        # คำนวณสารผสมเพิ่ม
+        admix_vol_liters = (cc / 100) * (admix_dosage / 1000)
+        admix_weight_kg = admix_vol_liters * admix_sg
         
         ssdd_avg = round((sg_s + sg_g) / 2, 1)
         if ssdd_avg >= 2.9: wdcc = -1.7440 * fwc + 2898.4795
@@ -190,29 +202,28 @@ with right_col:
         w_batched = fwc - (s_batched - fac) - (g_batched - cac)
 
         # --- แสดงผลอัตราส่วนผสม ---
-        st.markdown("### ➗ อัตราส่วนผสม (Mix Ratio)")
-        st.info(f"#### **1 : {(fac/cc):.2f} : {(cac/cc):.2f}** \n*(ปูนซีเมนต์ : ทราย : หิน)*")
+        st.markdown("### อัตราส่วนผสม (Mix Ratio)")
+        st.info(f"#### 1 : {(fac/cc):.2f} : {(cac/cc):.2f} \n*(ปูนซีเมนต์ : ทราย : หิน)*")
         st.write(f"*(อ้างอิง W/C Ratio = {wc:.3f} | กำลังอัดเป้าหมาย = {fm_target:.1f} MPa)*")
         
-        # --- แสดงผลสัดส่วนต่อ 1 ลบ.ม. ---
-        st.markdown("### 📦 สัดส่วนต่อ 1 ลูกบาศก์เมตร (Batched kg/m³)")
+        st.markdown("---")
         
-        # จัด Layout คล้ายการ์ดในภาพ
-        c1, c2 = st.columns([1.5, 1])
-        with c1: st.markdown("#### 🛢️ ปูนซีเมนต์ (Cement)")
-        with c2: st.markdown(f"#### **{cc:.1f}** kg")
+        # --- แสดงผลสัดส่วนต่อ 1 ลบ.ม. (เปรียบเทียบทฤษฎีและหน้างาน) ---
+        st.markdown("### สัดส่วนวัสดุต่อ 1 ลูกบาศก์เมตร (Proportions per 1 m³)")
         
-        c3, c4 = st.columns([1.5, 1])
-        with c3: st.markdown("#### 💧 น้ำ (Water)")
-        with c4: st.markdown(f"#### **{w_batched:.1f}** kg")
+        st.markdown("#### 1. ค่าทางทฤษฎี (สภาพอิ่มตัวผิวแห้ง - SSD)")
+        st.write(f"- ปูนซีเมนต์ (Cement): **{cc:.1f} kg**")
+        st.write(f"- ทราย (Fine Aggregate): **{fac:.1f} kg**")
+        st.write(f"- หิน (Coarse Aggregate): **{cac:.1f} kg**")
+        st.write(f"- น้ำ (Free Water): **{fwc:.1f} kg**")
         
-        c5, c6 = st.columns([1.5, 1])
-        with c5: st.markdown("#### 🏜️ ทราย (Fine Agg)")
-        with c6: st.markdown(f"#### **{s_batched:.1f}** kg")
+        st.markdown("#### 2. ค่าสำหรับชั่งหน้างานจริง (Batched Weights)")
+        st.write(f"- ปูนซีเมนต์ (Cement): **{cc:.1f} kg**")
+        st.write(f"- ทราย (Batched): **{s_batched:.1f} kg** *(รวมน้ำในทราย {s_batched - fac:.1f} kg)*")
+        st.write(f"- หิน (Batched): **{g_batched:.1f} kg** *(รวมน้ำในหิน {g_batched - cac:.1f} kg)*")
+        st.write(f"- น้ำ (เติมจริง): **{w_batched:.1f} kg** *(หักน้ำในมวลรวมออก {(s_batched - fac) + (g_batched - cac):.1f} kg)*")
         
-        c7, c8 = st.columns([1.5, 1])
-        with c7: st.markdown("#### 🪨 หิน (Coarse Agg)")
-        with c8: st.markdown(f"#### **{g_batched:.1f}** kg")
-        
-        if water_reduction > 0:
-            st.success(f"🧪 หมายเหตุ: ลดปริมาณน้ำลง {int(water_reduction*100)}% เนื่องจากการใช้สารผสมเพิ่ม")
+        if admix_type != "ไม่มี (None)":
+            st.markdown("#### 3. สารผสมเพิ่ม (Admixture)")
+            st.write(f"- ปริมาณสารลดน้ำที่ต้องตวง: **{admix_weight_kg:.2f} kg** (หรือประมาณ {admix_vol_liters:.2f} ลิตร)")
+            st.success(f"หมายเหตุ: ลดปริมาณน้ำลง {int(water_reduction*100)}% เนื่องจากการใช้สารผสมเพิ่ม")
