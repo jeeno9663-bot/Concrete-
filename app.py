@@ -51,7 +51,7 @@ with col_d:
     
     # ระบบ Preset ปูนซีเมนต์
     cement_preset = st.selectbox("สูตรปูนซีเมนต์ (Cement Type Preset)", [
-        "ปอร์ตแลนด์ ปฐมภูมิ (Type 1) - S.G. 3.15", 
+        "ปอร์ตแลนด์ประเภทที่ 1 (Type 1) - S.G. 3.15", 
         "ปูนซีเมนต์ไฮดรอลิก (Hydraulic) - S.G. 3.10", 
         "ปูนผสม (Mixed Cement) - S.G. 2.80",
         "กำหนดค่าเอง (Custom)"
