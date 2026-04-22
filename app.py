@@ -18,7 +18,7 @@ unit_system = st.sidebar.radio("ระบบหน่วย (Unit System)", ["SI
 # ==========================================
 # 1. กำหนดเกณฑ์การออกแบบและขนาดโครงการ
 # ==========================================
-st.header("1. กำหนดเกณฑ์การออกแบบ (Design Criteria)")
+st.header(" กำหนดเกณฑ์การออกแบบ (Design Criteria)")
 col_a, col_b, col_c = st.columns(3)
 
 with col_a:
@@ -42,7 +42,7 @@ with col_c:
 # ==========================================
 # 2. ข้อมูลสมบัติวัสดุ และ วัสดุประสานทดแทน
 # ==========================================
-st.header("2. ข้อมูลสมบัติวัสดุ (Material Properties)")
+st.header(" ข้อมูลสมบัติวัสดุ (Material Properties)")
 col_d, col_e, col_f = st.columns(3)
 
 with col_d:
@@ -83,7 +83,7 @@ with col_f:
 # ==========================================
 # 3. สภาวะหน้างาน & สารผสมเพิ่ม
 # ==========================================
-st.header("3. สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
+st.header(" สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
 col_g, col_h, col_i = st.columns(3)
 
 with col_g:
@@ -113,7 +113,7 @@ with col_i:
 # ==========================================
 # 4. ประเมินราคาต้นทุนวัสดุ
 # ==========================================
-st.header("4. ประเมินราคาต้นทุนวัสดุ (Cost Estimation)")
+st.header(" ประเมินราคาต้นทุนวัสดุ (Cost Estimation)")
 cost_1, cost_2, cost_3, cost_4, cost_5, cost_6 = st.columns(6)
 with cost_1: price_cement = st.number_input("ปูนซีเมนต์ (บาท/kg)", value=3.00, step=0.1)
 with cost_2: price_scm = st.number_input("SCMs (บาท/kg)", value=1.50, step=0.1)
@@ -303,19 +303,19 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             agg_label = "Uncrushed" if "Uncrushed" in agg_type else "Crushed"
             slump_labels = ["0–10 mm", "10–30 mm", "30–60 mm", "60–180 mm"]
             slump_idx_label = 0 if (slump if unit_system == "SI Units (MPa, kg, mm)" else slump*25.4) <= 10 else 1 if (slump if unit_system == "SI Units (MPa, kg, mm)" else slump*25.4) <= 30 else 2 if (slump if unit_system == "SI Units (MPa, kg, mm)" else slump*25.4) <= 60 else 3
-            st.markdown("**ขั้นที่ 1: กำลังอัดเป้าหมาย**")
+            st.markdown("** กำลังอัดเป้าหมาย**")
             st.code(f"fm = fc_cube / CF = {fm_cube:.2f} / {control_factor} = {fm_target:.2f} MPa", language="text")
-            st.markdown("**ขั้นที่ 2: W/C Ratio — DoE Parabolic Equation**")
+            st.markdown("** W/C Ratio — DoE Parabolic Equation**")
             st.code(f"ประเภท: {agg_label} | ช่วง: {'10–42 MPa' if fm_target <= 42 else '42–80 MPa'}\nW/C = {wc:.4f}  (จำกัด 0.25–0.95)", language="text")
-            st.markdown("**ขั้นที่ 3: Free Water Content — DoE Table 3 (Lookup)**")
+            st.markdown("** Free Water Content — DoE Table 3 (Lookup)**")
             st.code(f"Max Agg: {max_agg}mm | {agg_label} | Slump: {slump_labels[slump_idx_label]}\nFWC = {fwc_base} kg/m³ × (1-{water_reduction*100:.0f}%) = {fwc:.1f} kg/m³", language="text")
-            st.markdown("**ขั้นที่ 4: Cementitious Content**")
+            st.markdown("** Cementitious Content**")
             st.code(f"Cc = FWC/W/C = {fwc:.1f}/{wc:.4f} = {cm_total:.1f} kg/m³\nปูน = {cc:.1f} kg | SCMs = {scm_weight:.1f} kg ({scm_pct:.0f}%)", language="text")
-            st.markdown("**ขั้นที่ 5: Wet Density — DoE Linear Equation**")
+            st.markdown("** Wet Density — DoE Linear Equation**")
             st.code(f"SSDD_avg = {ssdd_avg} → Wdcc = {wdcc:.0f} kg/m³", language="text")
-            st.markdown("**ขั้นที่ 6: Aggregate Content**")
+            st.markdown("** Aggregate Content**")
             st.code(f"Ac = {wdcc:.0f} - {cm_total:.1f} - {fwc:.1f} = {ac:.1f} kg/m³\nPFA = {pfa_ratio*100:.1f}% → ทราย {fac:.1f} kg | หิน {cac:.1f} kg", language="text")
-            st.markdown("**ขั้นที่ 7: Moisture Adjustment — ACI 211.1**")
+            st.markdown("** Moisture Adjustment — ACI 211.1**")
             st.code(f"ทราย Batched = {s_batched:.1f} kg (free water {free_water_sand:+.1f} kg)\nหิน  Batched = {g_batched:.1f} kg (free water {free_water_gravel:+.1f} kg)\nน้ำเติมจริง  = {w_batched:.1f} kg", language="text")
         
         res1, res2, res3, res4 = st.columns(4)
