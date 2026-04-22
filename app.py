@@ -9,6 +9,7 @@ st.set_page_config(page_title="Intelligent Mix Design System", layout="wide", in
 st.markdown("<h1 style='text-align: center; color: #2C3E50;'>ระบบจำลองการออกแบบส่วนผสมคอนกรีตอัจฉริยะ</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: #7F8C8D; margin-bottom: 30px;'>(Web-Based Intelligent Concrete Mix Design Simulation System)</h4>", unsafe_allow_html=True)
 
+# การจัดการ State สำหรับบันทึกประวัติเพื่อเปรียบเทียบ
 if 'mix_history' not in st.session_state:
     st.session_state.mix_history = pd.DataFrame(columns=["ชื่อสูตร", "กำลังอัดเป้าหมาย (MPa)", "ต้นทุนรวม (บาท)", "การปล่อย CO2 (kg)", "W/C Ratio"])
 
@@ -248,7 +249,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         fac = pfa_ratio * ac
         cac = ac - fac
         
-        # 🎯 กู้คืนตัวแปรปรับแก้ความชื้นที่หายไป (แก้ไข NameError แล้ว)
         s_od = fac / (1 + (abs_sand / 100))
         free_water_sand = s_od * ((mc_sand - abs_sand) / 100)
         s_batched = fac + free_water_sand
@@ -276,7 +276,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         
         st.write("---")
         
-        # 🎯 เพิ่มกล่องแสดงผล อัตราส่วนผสม (Mix Ratio) ตามที่ขอกลับมาครับ
         st.markdown("### อัตราส่วนผสม (Mix Ratio)")
         st.info(f"#### 1 : {(fac/cm_total):.2f} : {(cac/cm_total):.2f} \n*(วัสดุประสานรวม : ทราย : หิน)*")
         st.write("---")
@@ -285,7 +284,19 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         
         with out_col1:
             st.markdown("### สัดส่วนวัสดุต่อ 1 ลูกบาศก์เมตร (Proportions per 1 m³)")
-            st.markdown("**1. ค่าสำหรับชั่งหน้างานจริง (Batched Weights)**")
+            
+            # กู้คืนส่วนค่าทางทฤษฎี SSD กลับมาแล้วครับ!
+            st.markdown("**1. ค่าทางทฤษฎี (สภาพอิ่มตัวผิวแห้ง - SSD)**")
+            st.write(f"- ปูนซีเมนต์ (Cement): **{cc:.1f} kg**")
+            if scm_pct > 0:
+                st.write(f"- วัสดุประสานทดแทน ({scm_type}): **{scm_weight:.1f} kg**")
+            st.write(f"- ทราย (Fine Agg.): **{fac:.1f} kg**")
+            st.write(f"- หิน/มวลรวม (Coarse Agg.): **{cac:.1f} kg**")
+            st.write(f"- น้ำ (Free Water): **{fwc:.1f} kg**")
+            
+            st.write("") 
+            
+            st.markdown("**2. ค่าสำหรับชั่งหน้างานจริง (Batched Weights)**")
             st.write(f"- ปูนซีเมนต์ (Cement): **{cc:.1f} kg**")
             if scm_pct > 0:
                 st.write(f"- วัสดุประสานทดแทน ({scm_type}): **{scm_weight:.1f} kg**")
@@ -295,7 +306,9 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             if admix_type != "ไม่มี (None)":
                 st.write(f"- ปริมาณสารลดน้ำ: **{admix_vol_liters:.2f} ลิตร**")
                 
-            st.markdown("### รายการสั่งซื้อวัสดุรวม (Project BOQ)")
+            st.write("")
+            
+            st.markdown("### 3. รายการสั่งซื้อวัสดุรวม (Project BOQ)")
             st.info(f"สำหรับปริมาตรคอนกรีตทั้งหมด: **{project_volume:,.1f} ลบ.ม.**")
             st.write(f"- ปูนซีเมนต์: **{((cc * project_volume)/50):,.1f} ถุง** (ถุงละ 50 kg)")
             if scm_pct > 0:
