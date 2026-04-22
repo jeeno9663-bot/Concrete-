@@ -39,9 +39,9 @@ col_c, col_d = st.columns(2)
 with col_c:
     agg_type = st.radio("ประเภทมวลรวม (Aggregate Type)", ["หินโม่ (Crushed)", "หินธรรมชาติ (Uncrushed)"])
     
-    # 🎯 ช่องรับค่า % Passing สำหรับทราย
+    # 🎯 เพิ่มช่องรับค่า % Passing สำหรับทราย เพื่อใช้เลือกสมการ PFA ทั้ง 60 ชุดให้ถูกต้อง
     p_passing_str = st.selectbox("เปอร์เซ็นต์ทรายผ่านตะแกรง 600 μm", ["100%", "80%", "60%", "40%", "15%"], index=2)
-    p_passing = int(p_passing_str.replace("%", ""))
+    passing_600 = int(p_passing_str.replace("%", ""))
 
 with col_d:
     st.write("**ความถ่วงจำเพาะ (Specific Gravity - SSD)**")
@@ -83,87 +83,91 @@ with col_g:
 # ==========================================
 # 🎯 ฟังก์ชันสมองกล: คำนวณ PFA 60 ชุดสมการ
 # ==========================================
-def get_pfa(max_agg, slump, p_passing, fwc_ratio):
-    pfa_percent = 0.0
+def calculate_pfa(max_agg, slump_mm, wc, passing_600):
+    pfa = 0.0
+    
+    # กรณีหินขนาดสูงสุด 10 mm (สมการ 14-33)
     if max_agg == 10:
-        if 0 <= slump <= 10:
-            if p_passing == 100: pfa_percent = 13.189 * fwc_ratio + 19.873
-            elif p_passing == 80: pfa_percent = 16.162 * fwc_ratio + 22.645
-            elif p_passing == 60: pfa_percent = 17.771 * fwc_ratio + 28.648
-            elif p_passing == 40: pfa_percent = 26.460 * fwc_ratio + 32.288
-            elif p_passing == 15: pfa_percent = 29.419 * fwc_ratio + 43.729
-        elif 10 < slump <= 30:
-            if p_passing == 100: pfa_percent = 11.706 * fwc_ratio + 21.439
-            elif p_passing == 80: pfa_percent = 13.613 * fwc_ratio + 25.198
-            elif p_passing == 60: pfa_percent = 18.789 * fwc_ratio + 29.200
-            elif p_passing == 40: pfa_percent = 26.455 * fwc_ratio + 33.604
-            elif p_passing == 15: pfa_percent = 28.145 * fwc_ratio + 45.290
-        elif 30 < slump <= 60:
-            if p_passing == 100: pfa_percent = 17.176 * fwc_ratio + 21.976
-            elif p_passing == 80: pfa_percent = 17.873 * fwc_ratio + 26.886
-            elif p_passing == 60: pfa_percent = 15.963 * fwc_ratio + 33.169
-            elif p_passing == 40: pfa_percent = 23.554 * fwc_ratio + 37.374
-            elif p_passing == 15: pfa_percent = 27.580 * fwc_ratio + 49.363
-        elif 60 < slump <= 200:
-            if p_passing == 100: pfa_percent = 13.215 * fwc_ratio + 26.004
-            elif p_passing == 80: pfa_percent = 15.114 * fwc_ratio + 30.072
-            elif p_passing == 60: pfa_percent = 17.934 * fwc_ratio + 36.495
-            elif p_passing == 40: pfa_percent = 23.929 * fwc_ratio + 43.378
-            elif p_passing == 15: pfa_percent = 29.258 * fwc_ratio + 55.011
+        if 0 <= slump_mm <= 10:
+            if passing_600 == 100: pfa = 13.18908 * wc + 19.8728
+            elif passing_600 == 80: pfa = 16.16210 * wc + 22.6454
+            elif passing_600 == 60: pfa = 17.77143 * wc + 28.6479
+            elif passing_600 == 40: pfa = 26.46020 * wc + 32.2883
+            else: pfa = 29.41890 * wc + 43.7290
+        elif 10 < slump_mm <= 30:
+            if passing_600 == 100: pfa = 11.70610 * wc + 21.4389
+            elif passing_600 == 80: pfa = 13.61330 * wc + 25.1982
+            elif passing_600 == 60: pfa = 18.78880 * wc + 29.1995
+            elif passing_600 == 40: pfa = 26.45510 * wc + 33.6037
+            else: pfa = 28.14480 * wc + 45.2898
+        elif 30 < slump_mm <= 60:
+            if passing_600 == 100: pfa = 17.17600 * wc + 21.9764
+            elif passing_600 == 80: pfa = 17.87300 * wc + 26.8855
+            elif passing_600 == 60: pfa = 15.96320 * wc + 33.1685
+            elif passing_600 == 40: pfa = 23.55400 * wc + 37.3736
+            else: pfa = 27.58010 * wc + 49.3627
+        else: # 60 - 180 mm
+            if passing_600 == 100: pfa = 13.21460 * wc + 26.0036
+            elif passing_600 == 80: pfa = 15.11390 * wc + 30.0719
+            elif passing_600 == 60: pfa = 17.93390 * wc + 36.4952
+            elif passing_600 == 40: pfa = 23.92910 * wc + 43.3777
+            else: pfa = 29.25830 * wc + 55.0112
 
+    # กรณีหินขนาดสูงสุด 20 mm (สมการ 34-53)
     elif max_agg == 20:
-        if 0 <= slump <= 10:
-            if p_passing == 100: pfa_percent = 12.712 * fwc_ratio + 13.789
-            elif p_passing == 80: pfa_percent = 13.999 * fwc_ratio + 16.777
-            elif p_passing == 60: pfa_percent = 19.090 * fwc_ratio + 18.941
-            elif p_passing == 40: pfa_percent = 23.647 * fwc_ratio + 22.000
-            elif p_passing == 15: pfa_percent = 27.604 * fwc_ratio + 29.372
-        elif 10 < slump <= 30:
-            if p_passing == 100: pfa_percent = 13.305 * fwc_ratio + 15.162
-            elif p_passing == 80: pfa_percent = 16.454 * fwc_ratio + 17.051
-            elif p_passing == 60: pfa_percent = 20.044 * fwc_ratio + 19.743
-            elif p_passing == 40: pfa_percent = 25.167 * fwc_ratio + 22.665
-            elif p_passing == 15: pfa_percent = 28.750 * fwc_ratio + 31.736
-        elif 30 < slump <= 60:
-            if p_passing == 100: pfa_percent = 11.740 * fwc_ratio + 17.556
-            elif p_passing == 80: pfa_percent = 17.124 * fwc_ratio + 19.879
-            elif p_passing == 60: pfa_percent = 19.126 * fwc_ratio + 23.368
-            elif p_passing == 40: pfa_percent = 23.693 * fwc_ratio + 27.705
-            elif p_passing == 15: pfa_percent = 30.944 * fwc_ratio + 35.593
-        elif 60 < slump <= 200:
-            if p_passing == 100: pfa_percent = 10.334 * fwc_ratio + 19.906
-            elif p_passing == 80: pfa_percent = 16.984 * fwc_ratio + 22.161
-            elif p_passing == 60: pfa_percent = 20.720 * fwc_ratio + 26.134
-            elif p_passing == 40: pfa_percent = 22.921 * fwc_ratio + 32.982
-            elif p_passing == 15: pfa_percent = 29.326 * fwc_ratio + 41.227
+        if 0 <= slump_mm <= 10:
+            if passing_600 == 100: pfa = 12.71190 * wc + 13.7892
+            elif passing_600 == 80: pfa = 13.99890 * wc + 16.7774
+            elif passing_600 == 60: pfa = 19.09000 * wc + 18.9410
+            elif passing_600 == 40: pfa = 23.64690 * wc + 22.0002
+            else: pfa = 27.60440 * wc + 29.3724
+        elif 10 < slump_mm <= 30:
+            if passing_600 == 100: pfa = 13.30500 * wc + 15.1615
+            elif passing_600 == 80: pfa = 16.45440 * wc + 17.0508
+            elif passing_600 == 60: pfa = 20.04360 * wc + 19.7431
+            elif passing_600 == 40: pfa = 25.16660 * wc + 22.6650
+            else: pfa = 28.75000 * wc + 31.7355
+        elif 30 < slump_mm <= 60:
+            if passing_600 == 100: pfa = 11.74020 * wc + 17.5560
+            elif passing_600 == 80: pfa = 17.12400 * wc + 19.8785
+            elif passing_600 == 60: pfa = 19.12630 * wc + 23.3679
+            elif passing_600 == 40: pfa = 23.69300 * wc + 27.7049
+            else: pfa = 30.94380 * wc + 35.5925
+        else: # 60 - 180 mm
+            if passing_600 == 100: pfa = 10.33400 * wc + 19.9064
+            elif passing_600 == 80: pfa = 16.98350 * wc + 22.1607
+            elif passing_600 == 60: pfa = 20.71980 * wc + 26.1337
+            elif passing_600 == 40: pfa = 22.92080 * wc + 32.9819
+            else: pfa = 29.32570 * wc + 41.2271
 
+    # กรณีหินขนาดสูงสุด 40 mm (สมการ 54-73)
     elif max_agg == 40:
-        if 0 <= slump <= 10:
-            if p_passing == 100: pfa_percent = 13.064 * fwc_ratio + 9.926
-            elif p_passing == 80: pfa_percent = 15.004 * fwc_ratio + 12.236
-            elif p_passing == 60: pfa_percent = 17.948 * fwc_ratio + 12.654
-            elif p_passing == 40: pfa_percent = 25.505 * fwc_ratio + 15.969
-            elif p_passing == 15: pfa_percent = 27.679 * fwc_ratio + 22.253
-        elif 10 < slump <= 30:
-            if p_passing == 100: pfa_percent = 11.233 * fwc_ratio + 12.412
-            elif p_passing == 80: pfa_percent = 12.836 * fwc_ratio + 14.141
-            elif p_passing == 60: pfa_percent = 16.616 * fwc_ratio + 16.314
-            elif p_passing == 40: pfa_percent = 23.323 * fwc_ratio + 18.640
-            elif p_passing == 15: pfa_percent = 27.773 * fwc_ratio + 23.960
-        elif 30 < slump <= 60:
-            if p_passing == 100: pfa_percent = 10.851 * fwc_ratio + 18.334
-            elif p_passing == 80: pfa_percent = 10.633 * fwc_ratio + 18.003
-            elif p_passing == 60: pfa_percent = 16.657 * fwc_ratio + 20.099
-            elif p_passing == 40: pfa_percent = 19.132 * fwc_ratio + 23.937
-            elif p_passing == 15: pfa_percent = 29.165 * fwc_ratio + 28.711
-        elif 60 < slump <= 200:
-            if p_passing == 100: pfa_percent = 13.244 * fwc_ratio + 17.106
-            elif p_passing == 80: pfa_percent = 15.271 * fwc_ratio + 19.946
-            elif p_passing == 60: pfa_percent = 19.427 * fwc_ratio + 22.455
-            elif p_passing == 40: pfa_percent = 22.845 * fwc_ratio + 27.980
-            elif p_passing == 15: pfa_percent = 29.254 * fwc_ratio + 34.333
-
-    return pfa_percent / 100.0 
+        if 0 <= slump_mm <= 10:
+            if passing_600 == 100: pfa = 13.06400 * wc + 9.9264
+            elif passing_600 == 80: pfa = 15.00400 * wc + 12.2357
+            elif passing_600 == 60: pfa = 17.94760 * wc + 12.6536
+            elif passing_600 == 40: pfa = 25.50450 * wc + 15.9692
+            else: pfa = 27.67870 * wc + 22.2533
+        elif 10 < slump_mm <= 30:
+            if passing_600 == 100: pfa = 11.23320 * wc + 12.4117
+            elif passing_600 == 80: pfa = 12.83580 * wc + 14.1410
+            elif passing_600 == 60: pfa = 16.61589 * wc + 16.3136
+            elif passing_600 == 40: pfa = 23.32340 * wc + 18.6401
+            else: pfa = 27.77270 * wc + 23.9597
+        elif 30 < slump_mm <= 60:
+            if passing_600 == 100: pfa = 10.85130 * wc + 18.3340
+            elif passing_600 == 80: pfa = 10.63320 * wc + 18.0026
+            elif passing_600 == 60: pfa = 16.65700 * wc + 20.0989
+            elif passing_600 == 40: pfa = 19.13231 * wc + 23.9366
+            else: pfa = 29.16500 * wc + 28.7106
+        else: # 60 - 180 mm
+            if passing_600 == 100: pfa = 13.24400 * wc + 17.1056
+            elif passing_600 == 80: pfa = 15.27120 * wc + 19.9462
+            elif passing_600 == 60: pfa = 19.42690 * wc + 22.4551
+            elif passing_600 == 40: pfa = 22.84520 * wc + 27.9800
+            else: pfa = 29.25440 * wc + 34.3330
+            
+    return pfa / 100.0
 
 # ==========================================
 # 4. การประมวลผลและแสดงผล (Smart Logic & Output)
@@ -218,9 +222,9 @@ if st.button(">>> ประมวลผลส่วนผสมคอนกร�
         # 5. หาปริมาณมวลรวมทั้งหมด
         ac = wdcc - cc - fwc
         
-        # 🎯 6. หาสัดส่วนทราย (ดึงสมการ 60 ชุด มาใช้งานอย่างสมบูรณ์แบบ)
-        pfa = get_pfa(max_agg, slump_mm, p_passing, wc)
-        fac = pfa * ac
+        # 🎯 6. หาสัดส่วนทราย (เรียกใช้ฟังก์ชัน 60 สมการ)
+        pfa_ratio = calculate_pfa(max_agg, slump_mm, wc, passing_600)
+        fac = pfa_ratio * ac
         cac = ac - fac
         
         # ---------------- การปรับแก้ความชื้น (Moisture Adjustment) ----------------
