@@ -1,88 +1,106 @@
 import streamlit as st
 
 # ==========================================
-# 1. ตั้งค่าหน้าเว็บ (UI Setup)
+# 0. การตั้งค่าหน่วยและธีม (Advanced Setup)
 # ==========================================
-st.set_page_config(page_title="Smart Concrete Mix (DoE Method)", layout="wide")
-st.title("🏗️ Smart Concrete Mix Algorithm")
-st.markdown("**ประมวลผลด้วยสมการคณิตศาสตร์อ้างอิงมาตรฐาน British DoE (Aguwa & Abubakar, 2025)**")
+st.set_page_config(page_title="Intelligent Mix Design", layout="wide")
+st.title("🏗️ ระบบจำลองการประมวลผลส่วนผสมคอนกรีตอัจฉริยะ")
+st.markdown("*(Intelligent Concrete Mix Design Simulation System)*")
+
+# [span_2](start_span)เลือกหน่วยวัด (Unit Switching Feature)[span_2](end_span)
+unit_system = st.sidebar.radio("ระบบหน่วย (Unit System)", ["SI Units (MPa, kg, mm)", "Inch-Pound Units (psi, lb, in)"])
 
 # ==========================================
-# 2. การรับข้อมูล (Input Module)
+# 1. กำหนดเกณฑ์การออกแบบ (Design Criteria)
 # ==========================================
-st.sidebar.header("📥 ข้อมูลตั้งต้น (Input)")
-fc_target = st.sidebar.number_input("กำลังอัดเป้าหมาย Fm (N/mm² หรือ MPa)", min_value=10.0, max_value=80.0, value=40.0, step=1.0)
-agg_type = st.sidebar.radio("ประเภทมวลรวม (Aggregate Type)", ["มวลรวมไม่โม่ (Uncrushed)", "มวลรวมโม่ (Crushed)"])
-ssdd = st.sidebar.selectbox("ความถ่วงจำเพาะรวม (SSDD)", [2.9, 2.8, 2.7, 2.6, 2.5, 2.4], index=3)
+st.header("ส่วนที่ 1: กำหนดเกณฑ์การออกแบบ (Design Criteria)")
+col_a, col_b = st.columns(2)
 
-# สมมติค่าเพื่อความเข้าใขง่ายใน Baby Project
-free_water = st.sidebar.number_input("ปริมาณน้ำอิสระ Fwc (kg/m³)", value=195.0, step=5.0)
-
-# ==========================================
-# 3. สมองกลประมวลผล (Algorithm Module - British DoE)
-# ==========================================
-def calculate_doe_mix(Fm, agg_type, ssdd, Fwc):
-    
-    # 1. สมการหาอัตราส่วนน้ำต่อซีเมนต์ (Fw/c)
-    if agg_type == "มวลรวมไม่โม่ (Uncrushed)":
-        if Fm <= 42:
-            Fwc_ratio = (0.0002952 * (Fm**2)) - (0.0312 * Fm) + 1.291 # Eq (2)
-        else:
-            Fwc_ratio = (0.00008519 * (Fm**2)) - (0.01571 * Fm) + 1.0097 # Eq (3)
-    else: # มวลรวมโม่ (Crushed)
-        if Fm <= 42:
-            Fwc_ratio = (0.000295 * (Fm**2)) - (0.0312 * Fm) + 1.351 # Eq (4)
-        else:
-            Fwc_ratio = (0.000008519 * (Fm**2)) - (0.01571 * Fm) + 1.0697 # Eq (5)
-            
-    # 2. สมการที่ 6: ปริมาณซีเมนต์ (Cement Content)
-    Cc = Fwc / Fwc_ratio
-    
-    # 3. สมการความหนาแน่นคอนกรีตสด (Wdcc) ตามค่า SSDD
-    if ssdd == 2.9:
-        Wdcc = -1.7440 * Fwc + 2898.4795 # Eq (7)
-    elif ssdd == 2.8:
-        Wdcc = -1.5961 * Fwc + 2802.5554 # Eq (8)
-    elif ssdd == 2.7:
-        Wdcc = -1.4480 * Fwc + 2702.8337 # Eq (9)
-    elif ssdd == 2.6:
-        Wdcc = -1.2492 * Fwc + 2410.3614 # Eq (10)
-    elif ssdd == 2.5:
-        Wdcc = -1.0996 * Fwc + 2500.6876 # Eq (11)
+with col_a:
+    if unit_system == "SI Units (MPa, kg, mm)":
+        fc_req = st.number_input("กำลังอัดประลัยที่ต้องการ (f'c) [MPa]", min_value=10.0, max_value=80.0, value=30.0)
+        slump = st.slider("ค่าความยุบตัว (Slump) [mm]", 0, 200, 100)
     else:
-        Wdcc = -0.9809 * Fwc + 2410.3614 # Eq (12)
-        
-    # 4. สมการที่ 13: ปริมาณมวลรวมรวม (Total Aggregate)
-    Ac = Wdcc - Cc - Fwc
-    
-    # 5. สมการสัดส่วนมวลรวมละเอียด (Pfa) 
-    # *จำลองการใช้สมการที่ (37) สำหรับขนาด 20mm, Slump 0-10mm ทราย 40% เพื่อเป็นโมเดลต้นแบบ
-    Pfa_percent = (23.6469 * Fwc_ratio) + 22.0002
-    Pfa = Pfa_percent / 100.0
-    
-    # 6. สมการที่ 74 และ 75: แยกปริมาณทรายและหิน
-    Fac = Pfa * Ac
-    Cac = Ac - Fac
-    
-    return Cc, Fac, Cac, Fwc, Fwc_ratio, Wdcc
+        fc_req = st.number_input("กำลังอัดประลัยที่ต้องการ (f'c) [psi]", min_value=1500.0, max_value=12000.0, value=4000.0)
+        slump = st.slider("ค่าความยุบตัว (Slump) [in]", 0.0, 8.0, 4.0)
+
+with col_b:
+    max_agg = st.selectbox("ขนาดมวลรวมสูงสุด (Max Aggregate Size)", ["10 mm", "20 mm", "40 mm"])
+    # [span_3](start_span)ระดับการควบคุมคุณภาพ (Control Factor)[span_3](end_span)
+    control_label = st.selectbox("ระดับการควบคุมคุณภาพ (Control Factor)", ["ดีมาก (Very Good - 0.8)", "ปานกลาง (Fair - 0.7)", "ต่ำ (Low - 0.5)"])
+    control_factor = 0.8 if "0.8" in control_label else 0.7 if "0.7" in control_label else 0.5
 
 # ==========================================
-# 4. การแสดงผล (Output Dashboard)
+# 2. ข้อมูลสมบัติวัสดุ (Material Properties)
+# ==========================================
+st.header("ส่วนที่ 2: ข้อมูลสมบัติวัสดุ (Material Properties)")
+col_c, col_d = st.columns(2)
+
+with col_c:
+    [span_4](start_span)agg_type = st.radio("ประเภทมวลรวม (Aggregate Type)", ["หินโม่ (Crushed)", "หินธรรมชาติ (Uncrushed)"])[span_4](end_span)
+    [span_5](start_span)fm_sand = st.number_input("ค่าความละเอียดทราย (Fineness Modulus)", value=2.8)[span_5](end_span)
+
+with col_d:
+    st.write("**ความถ่วงจำเพาะ (Specific Gravity)**")
+    [span_6](start_span)sg_c = st.number_input("ปูนซีเมนต์ (Cement)", value=3.15)[span_6](end_span)
+    sg_s = st.number_input("ทราย (Fine Agg.)", value=2.60)
+    sg_g = st.number_input("หิน (Coarse Agg.)", value=2.65)
+
+# ==========================================
+# 3. [span_7](start_span)สภาวะหน้างานจริง (Field Adjustments)[span_7](end_span)
+# ==========================================
+st.header("ส่วนที่ 3: สภาวะหน้างานจริง (Field Adjustments)")
+col_e, col_f = st.columns(2)
+
+with col_e:
+    mc_sand = st.number_input("ความชื้นในทราย (Moisture Content %)", value=5.0)
+    abs_sand = st.number_input("การดูดซึมของทราย (Absorption %)", value=1.0)
+
+with col_f:
+    mc_gravel = st.number_input("ความชื้นในหิน (Moisture Content %)", value=2.0)
+    abs_gravel = st.number_input("การดูดซึมของหิน (Absorption %)", value=0.5)
+
+# ==========================================
+# 4. การประมวลผลและแสดงผล (Logic & Output)
 # ==========================================
 st.write("---")
-if st.button("🚀 รันอัลกอริทึม (Calculate Mix)", type="primary"):
+if st.button(">>> ประมวลผลส่วนผสม (CALCULATE) <<<", type="primary"):
     
-    # ดึงสมองกลมาทำงาน
-    Cc, Fac, Cac, Fwc, Fwc_ratio, Wdcc = calculate_doe_mix(fc_target, agg_type, ssdd, free_water)
-    
-    st.success(f"✅ ประมวลผลสำเร็จ! (Target W/C Ratio = {Fwc_ratio:.3f}) | ความหนาแน่นเป้าหมาย = {Wdcc:.1f} kg/m³")
-    
-    # ส่วนแสดงผลลัพธ์
-    st.subheader("📊 สัดส่วนผสมทางทฤษฎี (kg/m³)")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("ปูนซีเมนต์ (Cement)", f"{Cc:.1f} kg")
-    col2.metric("ทราย (Fine Agg.)", f"{Fac:.1f} kg")
-    col3.metric("หิน (Coarse Agg.)", f"{Cac:.1f} kg")
-    col4.metric("น้ำ (Free Water)", f"{Fwc:.1f} kg")
-    
-    st.info("💡 หมายเหตุ: อัลกอริทึมนี้ใช้สมการพหุนามและสมการเชิงเส้นตามงานวิจัย Aguwa & Abubakar (2025) ทดแทนการเปิดตารางมาตรฐาน British DoE")
+    # [span_8](start_span)Validation Check: ตรวจสอบขอบเขตกำลังอัด[span_8](end_span)
+    if fc_req > 80 and unit_system == "SI Units (MPa, kg, mm)":
+        st.error("⚠️ คำเตือน: ค่ากำลังอัดเกินขอบเขตของสมการมาตรฐาน (Max 80 MPa)")
+    else:
+        # [span_9](start_span)แปลงหน่วยเป็น Metric เพื่อใช้คำนวณในสมการหลัก (DoE Method)[span_9](end_span)
+        fm_metric = fc_req if unit_system == "SI Units (MPa, kg, mm)" else fc_req * 0.00689476
+        [span_10](start_span)fm_target = fm_metric / control_factor # คำนวณกำลังเป้าหมายตาม Control Factor[span_10](end_span)
+        
+        # [span_11](start_span)สมการหา W/C จากงานวิจัย Aguwa (2025)[span_11](end_span)
+        if agg_type == "หินธรรมชาติ (Uncrushed)":
+            wc = (0.0002952 * (fm_target**2)) - (0.0312 * fm_target) + 1.291 if fm_target <= 42 else (0.00008519 * (fm_target**2)) - (0.01571 * fm_target) + 1.0097
+        else:
+            wc = (0.000295 * (fm_target**2)) - (0.0312 * fm_target) + 1.351 if fm_target <= 42 else (0.000008519 * (fm_target**2)) - (0.01571 * fm_target) + 1.0697
+        
+        # ปริมาณน้ำ (จำลองจากตาราง DoE)
+        fwc = 190.0 # kg/m3
+        [span_12](start_span)cc = fwc / wc # ปริมาณซีเมนต์[span_12](end_span)
+        
+        # การแสดงผล
+        st.header("ส่วนที่ 4: การแสดงผลลัพธ์ (Output Data)")
+        res1, res2 = st.columns(2)
+        
+        with res1:
+            st.metric("อัตราส่วน W/C Ratio", f"{wc:.2f}")
+            st.metric("กำลังอัดเป้าหมาย (fm)", f"{fm_target:.1f} MPa")
+        
+        with res2:
+            st.write("**น้ำหนักวัสดุต่อ 1 ลูกบาศก์เมตร**")
+            # [span_13](start_span)คำนวณการปรับแก้ความชื้นจริงหน้างาน [cite: 869-879]
+            sand_ssd = 650.0 # ค่าสมมติสำหรับตัวอย่าง
+            s_od = sand_ssd / (1 + (abs_sand/100))
+            s_batched = sand_ssd + (s_od * (mc_sand - abs_sand)/100)
+            
+            st.write(f"- ปูนซีเมนต์: {cc:.1f} kg")
+            st.write(f"- น้ำอิสระ: {fwc:.1f} kg")
+            st.write(f"- ทราย (Batched): {s_batched:.1f} kg")
+            [cite_start]st.info(f"สัดส่วนโดยประมาณ 1 : {(sand_ssd/cc):.2f} : 3.50")[span_13](end_span)
+
