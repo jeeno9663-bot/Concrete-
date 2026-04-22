@@ -13,7 +13,7 @@ unit_system = st.sidebar.radio("ระบบหน่วย (Unit System)", ["SI
 # ==========================================
 # 1. กำหนดเกณฑ์การออกแบบ (Design Criteria)
 # ==========================================
-st.header("ส่วนที่ 1: กำหนดเกณฑ์การออกแบบ (Design Criteria)")
+st.header("กำหนดเกณฑ์การออกแบบ (Design Criteria)")
 col_a, col_b = st.columns(2)
 
 with col_a:
@@ -36,7 +36,7 @@ with col_b:
 # ==========================================
 # 2. ข้อมูลสมบัติวัสดุ (Material Properties)
 # ==========================================
-st.header("ส่วนที่ 2: ข้อมูลสมบัติวัสดุ (Material Properties)")
+st.header("ข้อมูลสมบัติวัสดุ (Material Properties)")
 col_c, col_d = st.columns(2)
 
 with col_c:
@@ -54,7 +54,7 @@ with col_d:
 # ==========================================
 # 3. สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)
 # ==========================================
-st.header("ส่วนที่ 3: สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
+st.header("สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
 col_e, col_f, col_g = st.columns(3)
 
 with col_e:
@@ -130,12 +130,12 @@ def calculate_pfa(max_agg, slump_mm, wc, passing_600):
         elif 30 < slump_mm <= 60:
             if passing_600 == 100: pfa = 11.74020 * wc + 17.5560
             elif passing_600 == 80: pfa = 17.12400 * wc + 19.8785
-            elif passing_600 == 60: pfa = 19.12630 * wc + 23.3679
+            elif passing_600 == 60: pfa = 19.12630 * wc + 23.368
             elif passing_600 == 40: pfa = 23.69300 * wc + 27.7049
             else: pfa = 30.94380 * wc + 35.5925
         else: 
             if passing_600 == 100: pfa = 10.33400 * wc + 19.9064
-            elif passing_600 == 80: pfa = 16.98350 * wc + 22.1607
+            elif passing_600 == 80: pfa = 16.98350 * wc + 22.1610
             elif passing_600 == 60: pfa = 20.71980 * wc + 26.1337
             elif passing_600 == 40: pfa = 22.92080 * wc + 32.9819
             else: pfa = 29.32570 * wc + 41.2271
@@ -158,7 +158,7 @@ def calculate_pfa(max_agg, slump_mm, wc, passing_600):
             elif passing_600 == 80: pfa = 10.63320 * wc + 18.0026
             elif passing_600 == 60: pfa = 16.65700 * wc + 20.0989
             elif passing_600 == 40: pfa = 19.13231 * wc + 23.9366
-            else: pfa = 29.16500 * wc + 28.7106
+            else: pfa = 29.16500 * wc + 28.7110
         else: 
             if passing_600 == 100: pfa = 13.24400 * wc + 17.1056
             elif passing_600 == 80: pfa = 15.27120 * wc + 19.9462
@@ -166,11 +166,12 @@ def calculate_pfa(max_agg, slump_mm, wc, passing_600):
             elif passing_600 == 40: pfa = 22.84520 * wc + 27.9800
             else: pfa = 29.25440 * wc + 34.3330
             
-    return pfa / 100.0
+    return pfa / 100.0 
 
 # ==========================================
 # 4. การประมวลผลและแสดงผล (Calculation & Output)
 # ==========================================
+st.header("การประมวลผลและผลลัพธ์ (Calculation & Output)")
 st.write("---")
 if st.button("ประมวลผลส่วนผสมคอนกรีต (CALCULATE)", type="primary", use_container_width=True):
     
@@ -235,7 +236,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         w_batched = fwc - free_water_sand - free_water_gravel
 
         # ---------------- การแสดงผลลัพธ์ ----------------
-        st.header("ส่วนที่ 4: การแสดงผลลัพธ์ (Output Data)")
         if admix_type != "ไม่มี (None)":
             st.success(f"อัลกอริทึมทำงานเสร็จสมบูรณ์ | การใช้สารลดน้ำช่วยลดปริมาณน้ำ {water_reduction*100}% | Error Margin: 0.65%-3.00%")
         else:
