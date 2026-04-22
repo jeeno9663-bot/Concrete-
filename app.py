@@ -163,7 +163,7 @@ def calculate_pfa(max_agg, slump_mm, wc, passing_600):
             if passing_600 == 100: pfa = 13.30500 * wc + 15.1615
             elif passing_600 == 80: pfa = 16.45440 * wc + 17.0508
             elif passing_600 == 60: pfa = 20.04360 * wc + 19.7431
-            elif passing_600 == 40: pfa = 25.16660 * wc + 22.6650
+            elif passing_600 == 40: pfa = 22.6650 * wc + 26.4602 # แก้ไขชุดตัวเลขให้ตรงวิจัย
             else: pfa = 28.75000 * wc + 31.7355
         elif 30 < slump_mm <= 60:
             if passing_600 == 100: pfa = 11.74020 * wc + 17.5560
@@ -218,6 +218,7 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
     if fm_cube > 80.0:
         st.error("คำเตือน: ค่ากำลังอัดเทียบเท่า Cube เกินขอบเขตของสมการมาตรฐานวิจัย (Max 80 MPa)")
     else:
+        # การหา W/C
         if "Uncrushed" in agg_type:
             wc = (0.0002952 * (fm_target**2)) - (0.0312 * fm_target) + 1.291 if fm_target <= 42 else (0.00008519 * (fm_target**2)) - (0.01571 * fm_target) + 1.0097
         else:
@@ -240,15 +241,14 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         elif ssdd_avg == 2.7: wdcc = -1.4480 * fwc + 2702.8337
         elif ssdd_avg == 2.6: wdcc = -1.2492 * fwc + 2410.3614
         elif ssdd_avg == 2.5: wdcc = -1.0996 * fwc + 2500.6876
-        elif ssdd_avg < 2.0: wdcc = -0.8000 * fwc + 1800.0000
         else: wdcc = -0.9809 * fwc + 2410.3614
             
         ac = wdcc - cm_total - fwc
-        
         pfa_ratio = calculate_pfa(max_agg, slump_mm, wc, passing_600)
         fac = pfa_ratio * ac
         cac = ac - fac
         
+        # ปรับแก้ความชื้นหน้างาน
         s_od = fac / (1 + (abs_sand / 100))
         free_water_sand = s_od * ((mc_sand - abs_sand) / 100)
         s_batched = fac + free_water_sand
@@ -275,7 +275,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         res4.metric("การปล่อย CO2", f"{total_co2_m3:.1f} kg/m³")
         
         st.write("---")
-        
         st.markdown("### อัตราส่วนผสม (Mix Ratio)")
         st.info(f"#### 1 : {(fac/cm_total):.2f} : {(cac/cm_total):.2f} \n*(วัสดุประสานรวม : ทราย : หิน)*")
         st.write("---")
@@ -284,30 +283,26 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         
         with out_col1:
             st.markdown("### สัดส่วนวัสดุต่อ 1 ลูกบาศก์เมตร (Proportions per 1 m³)")
-            
-            # กู้คืนส่วนค่าทางทฤษฎี SSD กลับมาแล้วครับ!
             st.markdown("**1. ค่าทางทฤษฎี (สภาพอิ่มตัวผิวแห้ง - SSD)**")
             st.write(f"- ปูนซีเมนต์ (Cement): **{cc:.1f} kg**")
             if scm_pct > 0:
                 st.write(f"- วัสดุประสานทดแทน ({scm_type}): **{scm_weight:.1f} kg**")
             st.write(f"- ทราย (Fine Agg.): **{fac:.1f} kg**")
-            st.write(f"- หิน/มวลรวม (Coarse Agg.): **{cac:.1f} kg**")
+            st.write(f"- หิน (Coarse Agg.): **{cac:.1f} kg**")
             st.write(f"- น้ำ (Free Water): **{fwc:.1f} kg**")
             
             st.write("") 
-            
             st.markdown("**2. ค่าสำหรับชั่งหน้างานจริง (Batched Weights)**")
             st.write(f"- ปูนซีเมนต์ (Cement): **{cc:.1f} kg**")
             if scm_pct > 0:
                 st.write(f"- วัสดุประสานทดแทน ({scm_type}): **{scm_weight:.1f} kg**")
             st.write(f"- ทราย (Batched): **{s_batched:.1f} kg** (+ {free_water_sand:.1f} kg)")
-            st.write(f"- หิน/มวลรวม (Batched): **{g_batched:.1f} kg** (+ {free_water_gravel:.1f} kg)")
+            st.write(f"- หิน (Batched): **{g_batched:.1f} kg** (+ {free_water_gravel:.1f} kg)")
             st.write(f"- น้ำ (เติมจริง): **{w_batched:.1f} kg** (- {free_water_sand + free_water_gravel:.1f} kg)")
             if admix_type != "ไม่มี (None)":
                 st.write(f"- ปริมาณสารลดน้ำ: **{admix_vol_liters:.2f} ลิตร**")
                 
             st.write("")
-            
             st.markdown("### 3. รายการสั่งซื้อวัสดุรวม (Project BOQ)")
             st.info(f"สำหรับปริมาตรคอนกรีตทั้งหมด: **{project_volume:,.1f} ลบ.ม.**")
             st.write(f"- ปูนซีเมนต์: **{((cc * project_volume)/50):,.1f} ถุง** (ถุงละ 50 kg)")
@@ -318,9 +313,22 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             st.markdown(f"#### งบประมาณรวม: **{total_project_cost:,.2f} บาท**")
 
         with out_col2:
+            # 🎯 ---------------- ตรรกะกราฟพัฒนากำลังอัดอ้างอิงประเภทปูน ----------------
             st.markdown("### กราฟคาดการณ์การพัฒนากำลังอัด (Strength Development)")
+            
+            # กำหนดค่าสัมประสิทธิ์ a และ b ตามประเภทปูน (ACI 209R)
+            if "Type 1" in cement_preset:
+                a_coeff, b_coeff = 4.0, 0.85
+            elif "ไฮดรอลิก" in cement_preset:
+                # ปูนไฮดรอลิกในไทยมักมีคุณสมบัติใกล้เคียง Type 1 แต่เซ็ตตัวดีกว่าเล็กน้อย 
+                # (ค่านี้ควรปรึกษาอาจารย์เพื่อปรับจูนตัวเลขที่แม่นยำที่สุด)
+                a_coeff, b_coeff = 4.0, 0.85 
+            else:
+                a_coeff, b_coeff = 4.0, 0.85
+                
             days = [3, 7, 14, 21, 28]
-            strengths = [fm_target * (t / (4 + 0.85 * t)) for t in days]
+            # สมการพัฒนากำลังอัด: f(t) = f(28) * [t / (a + b*t)]
+            strengths = [fm_target * (t / (a_coeff + b_coeff * t)) for t in days]
             strength_df = pd.DataFrame({"อายุคอนกรีต (วัน)": days, "กำลังอัด (MPa)": strengths}).set_index("อายุคอนกรีต (วัน)")
             st.line_chart(strength_df)
 
@@ -354,7 +362,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             
         if not st.session_state.mix_history.empty:
             st.dataframe(st.session_state.mix_history, use_container_width=True)
-            
             comp_col1, comp_col2 = st.columns(2)
             with comp_col1:
                 st.markdown("**เปรียบเทียบต้นทุนรวม (บาท)**")
