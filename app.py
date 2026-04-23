@@ -18,7 +18,7 @@ unit_system = st.sidebar.radio("ระบบหน่วย (Unit System)", ["SI
 # ==========================================
 # 1. กำหนดเกณฑ์การออกแบบและขนาดโครงการ
 # ==========================================
-st.header("1. กำหนดเกณฑ์การออกแบบ (Design Criteria)")
+st.header(" กำหนดเกณฑ์การออกแบบ (Design Criteria)")
 col_a, col_b, col_c = st.columns(3)
 
 with col_a:
@@ -59,7 +59,7 @@ else:
 # ==========================================
 # 2. ข้อมูลสมบัติวัสดุ และ วัสดุประสานทดแทน
 # ==========================================
-st.header("2. ข้อมูลสมบัติวัสดุ (Material Properties)")
+st.header(" ข้อมูลสมบัติวัสดุ (Material Properties)")
 col_d, col_e, col_f = st.columns(3)
 
 with col_d:
@@ -100,7 +100,7 @@ with col_f:
 # ==========================================
 # 3. สภาวะหน้างาน & สารผสมเพิ่ม
 # ==========================================
-st.header("3. สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
+st.header(" สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
 col_g, col_h, col_i = st.columns(3)
 
 with col_g:
@@ -130,7 +130,7 @@ with col_i:
 # ==========================================
 # 4. ประเมินราคาต้นทุนวัสดุ
 # ==========================================
-st.header("4. ประเมินราคาต้นทุนวัสดุ (Cost Estimation)")
+st.header(" ประเมินราคาต้นทุนวัสดุ (Cost Estimation)")
 cost_1, cost_2, cost_3, cost_4, cost_5, cost_6 = st.columns(6)
 with cost_1: price_cement = st.number_input("ปูนซีเมนต์ (บาท/kg)", value=3.00, step=0.1)
 with cost_2: price_scm = st.number_input("SCMs (บาท/kg)", value=1.50, step=0.1)
@@ -326,7 +326,7 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
 
         st.success("การประมวลผลเสร็จสมบูรณ์ (Calculation Completed Successfully)")
         
-        # แสดงสมการที่ใช้
+        # แสดงสมการที่ใช้ (เพิ่มสมการปริมาตรและน้ำหนักโมลด์)
         with st.expander("แสดงสมการที่ใช้ในการคำนวณ (Show Equations Used)"):
             agg_label = "Uncrushed" if "Uncrushed" in agg_type else "Crushed"
             slump_labels = ["0-10 mm", "10-30 mm", "30-60 mm", "60-180 mm"]
@@ -345,6 +345,14 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             st.code(f"Ac = {wdcc:.0f} - {cm_total:.1f} - {fwc:.1f} = {ac:.1f} kg/m3\nPFA = {pfa_ratio*100:.1f}% -> ทราย {fac:.1f} kg | หิน {cac:.1f} kg", language="text")
             st.markdown("**Moisture Adjustment - ACI 211.1**")
             st.code(f"ทราย Batched = {s_batched:.1f} kg (free water {free_water_sand:+.1f} kg)\nหิน  Batched = {g_batched:.1f} kg (free water {free_water_gravel:+.1f} kg)\nน้ำเติมจริง  = {w_batched:.1f} kg", language="text")
+            st.markdown("**สัดส่วนสำหรับหล่อตัวอย่าง 1 โมลด์ (Trial Mix & Fresh Concrete Weight)**")
+            if specimen_type == "ทรงกระบอก (Cylinder)":
+                st.code(f"ปริมาตรโมลด์ (V_mold) = π * (r)^2 * h = 3.1416 * ({mold_dia/200:.3f})^2 * {mold_h/100:.2f} = {mold_vol_m3:.6f} m3", language="text")
+            else:
+                st.code(f"ปริมาตรโมลด์ (V_mold) = กว้าง * ยาว * ลึก = {mold_w/100:.2f} * {mold_l/100:.2f} * {mold_h/100:.2f} = {mold_vol_m3:.6f} m3", language="text")
+            st.code(f"ปริมาตรเผื่อผสม (V_mix) = V_mold * (1 + Waste%) = {mold_vol_m3:.6f} * (1 + {waste_pct/100:.2f}) = {trial_mix_vol:.6f} m3\n"
+                    f"น้ำหนักปูนสด (W_fresh) = V_mold * Wdcc = {mold_vol_m3:.6f} * {wdcc:.0f} = {fresh_conc_weight:.2f} kg\n"
+                    f"น้ำหนักชั่งรวมโมลด์ (W_target) = W_fresh + W_empty_mold = {fresh_conc_weight:.2f} + {mold_empty_wt:.2f} = {target_scale_weight:.2f} kg", language="text")
         
         res1, res2, res3, res4 = st.columns(4)
         res1.metric("กำลังอัดเป้าหมาย (fm)", f"{fm_target:.1f} MPa")
