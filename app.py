@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
 # ==========================================
 # การตั้งค่าหน้าเว็บ
@@ -9,24 +10,35 @@ st.set_page_config(page_title="Intelligent Mix Design System", layout="wide", in
 st.markdown("<h1 style='text-align: center; color: #2C3E50;'>ระบบจำลองการออกแบบส่วนผสมคอนกรีตอัจฉริยะ</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: #7F8C8D; margin-bottom: 30px;'>(Web-Based Intelligent Concrete Mix Design Simulation System)</h4>", unsafe_allow_html=True)
 
-# การจัดการ State สำหรับบันทึกประวัติเพื่อเปรียบเทียบ
 if 'mix_history' not in st.session_state:
     st.session_state.mix_history = pd.DataFrame(columns=["ชื่อสูตร", "กำลังอัดเป้าหมาย (MPa)", "ต้นทุนรวม (บาท)", "การปล่อย CO2 (kg)", "W/C Ratio"])
 
 unit_system = st.sidebar.radio("ระบบหน่วย (Unit System)", ["SI Units (MPa, kg, mm)", "Inch-Pound Units (psi, lb, in)"])
 
 # ==========================================
+# ฐานข้อมูลงานวิจัยอ้างอิง (Empirical Database from Literature)
+# ==========================================
+empirical_db = pd.DataFrame([
+    {"อ้างอิง": "Chindaprasirt et al.", "ประเภท": "เถ้าลอยแม่เมาะ (OFA 20%)", "W/B": 0.35, "Strength_28d": 45.2, "Strength_90d": 74.5},
+    {"อ้างอิง": "Chindaprasirt et al.", "ประเภท": "เถ้าลอยคัดขนาด (CFA 20%)", "W/B": 0.35, "Strength_28d": 76.6, "Strength_90d": 81.4},
+    {"อ้างอิง": "Chindaprasirt et al.", "ประเภท": "เถ้าลอยแม่เมาะ (OFA 40%)", "W/B": 0.35, "Strength_28d": 56.6, "Strength_90d": 61.4},
+    {"อ้างอิง": "CANMET (Fournier & Malhotra)", "ประเภท": "HVFA (เถ้าลอย 56%)", "W/B": 0.32, "Strength_28d": 40.0, "Strength_90d": 60.0},
+    {"อ้างอิง": "Laurent & Gourlay (France)", "ประเภท": "Hempcrete (แกนกัญชง)", "W/B": 1.05, "Strength_28d": 0.34, "Strength_90d": 0.59},
+    {"อ้างอิง": "Tangtermsirikul (SIIT)", "ประเภท": "Control OPC (Type 1)", "W/B": 0.50, "Strength_28d": 34.5, "Strength_90d": 38.0}
+])
+
+# ==========================================
 # 1. กำหนดเกณฑ์การออกแบบและขนาดโครงการ
 # ==========================================
-st.header(" กำหนดเกณฑ์การออกแบบ (Design Criteria)")
+st.header("1. กำหนดเกณฑ์การออกแบบ (Design Criteria)")
 col_a, col_b, col_c = st.columns(3)
 
 with col_a:
     if unit_system == "SI Units (MPa, kg, mm)":
-        fc_req = st.number_input("กำลังอัดประลัยที่ต้องการ (f'c) [MPa]", min_value=10.0, max_value=80.0, value=30.0)
+        fc_req = st.number_input("กำลังอัดประลัยที่ต้องการ (f'c) [MPa]", min_value=1.0, max_value=100.0, value=30.0)
         slump = st.slider("ค่าความยุบตัว (Slump) [mm]", 0.0, 200.0, 100.0)
     else:
-        fc_req = st.number_input("กำลังอัดประลัยที่ต้องการ (f'c) [psi]", min_value=1500.0, max_value=12000.0, value=4000.0)
+        fc_req = st.number_input("กำลังอัดประลัยที่ต้องการ (f'c) [psi]", min_value=150.0, max_value=14500.0, value=4000.0)
         slump = st.slider("ค่าความยุบตัว (Slump) [in]", 0.0, 8.0, 4.0)
 
 with col_b:
@@ -41,27 +53,37 @@ with col_c:
 
 st.write("---")
 st.write("**ข้อมูลสำหรับการผสมทดลองในห้องปฏิบัติการ (Trial Mix Setup)**")
-mold_1, mold_2, mold_3, mold_4, mold_5, mold_6 = st.columns(6)
-
 if specimen_type == "ทรงกระบอก (Cylinder)":
+    mold_1, mold_2, mold_3, mold_4, mold_5 = st.columns([1, 1, 1, 1, 1.5])
     with mold_1: mold_dia = st.number_input("เส้นผ่านศูนย์กลาง (cm)", min_value=1.0, value=15.0, step=1.0)
     with mold_2: mold_h = st.number_input("ความสูง (cm)", min_value=1.0, value=30.0, step=1.0)
     with mold_3: num_molds = st.number_input("จำนวนก้อน", min_value=1, value=3, step=1)
-    with mold_4: mold_empty_wt = st.number_input("น้ำหนักโมลด์เปล่า (เฉลี่ย kg)", min_value=0.0, value=14.0, step=0.1)
-    with mold_5: waste_pct = st.number_input("เผื่อวัสดุ (%)", min_value=0.0, max_value=50.0, value=15.0, step=1.0)
+    with mold_4: waste_pct = st.number_input("เผื่อปริมาณ (%)", min_value=0.0, max_value=50.0, value=15.0, step=1.0)
+    with mold_5:
+        scale_mode = st.selectbox("รูปแบบการชั่งน้ำหนัก", ["ชั่งเฉพาะปูนสด (Tare ตาชั่ง)", "ชั่งรวมน้ำหนักโมลด์เปล่า"])
+        if scale_mode == "ชั่งรวมน้ำหนักโมลด์เปล่า":
+            mold_empty_wt = st.number_input("นน.โมลด์เปล่า (เฉลี่ย kg)", min_value=0.0, value=14.0, step=0.1)
+        else:
+            mold_empty_wt = 0.0
     mold_w = mold_l = 0.0 
 else:
+    mold_1, mold_2, mold_3, mold_4, mold_5, mold_6 = st.columns([1, 1, 1, 1, 1, 1.5])
     with mold_1: mold_w = st.number_input("กว้างเฉลี่ย (cm)", min_value=1.0, value=15.0, step=0.1)
     with mold_2: mold_l = st.number_input("ยาวเฉลี่ย (cm)", min_value=1.0, value=15.0, step=0.1)
     with mold_3: mold_h = st.number_input("ลึกเฉลี่ย (cm)", min_value=1.0, value=15.0, step=0.1)
     with mold_4: num_molds = st.number_input("จำนวนก้อน", min_value=1, value=3, step=1)
-    with mold_5: mold_empty_wt = st.number_input("นน.โมลด์เปล่า (เฉลี่ย kg)", min_value=0.0, value=8.5, step=0.1)
-    with mold_6: waste_pct = st.number_input("เผื่อวัสดุ (%)", min_value=0.0, max_value=50.0, value=15.0, step=1.0)
+    with mold_5: waste_pct = st.number_input("เผื่อปริมาณ (%)", min_value=0.0, max_value=50.0, value=15.0, step=1.0)
+    with mold_6:
+        scale_mode = st.selectbox("รูปแบบการชั่งน้ำหนัก", ["ชั่งเฉพาะปูนสด (Tare ตาชั่ง)", "ชั่งรวมน้ำหนักโมลด์เปล่า"])
+        if scale_mode == "ชั่งรวมน้ำหนักโมลด์เปล่า":
+            mold_empty_wt = st.number_input("นน.โมลด์เปล่า (เฉลี่ย kg)", min_value=0.0, value=8.5, step=0.1)
+        else:
+            mold_empty_wt = 0.0
 
 # ==========================================
 # 2. ข้อมูลสมบัติวัสดุ และ วัสดุประสานทดแทน
 # ==========================================
-st.header(" ข้อมูลสมบัติวัสดุ (Material Properties)")
+st.header("2. ข้อมูลสมบัติวัสดุ (Material Properties)")
 col_d, col_e, col_f = st.columns(3)
 
 with col_d:
@@ -91,10 +113,10 @@ with col_e:
 
 with col_f:
     st.write("**วัสดุประสานทดแทน (SCMs)**")
-    scm_type = st.selectbox("การใช้ SCMs", ["ไม่มี (None)", "เถ้าลอย (Fly Ash)", "สแลก (Slag)"])
+    scm_type = st.selectbox("การใช้ SCMs", ["ไม่มี (None)", "เถ้าลอยแม่เมาะ (Class C)", "เถ้าลอยนำเข้า (Class F)", "สแลก (Slag)"])
     if scm_type != "ไม่มี (None)":
-        scm_pct = st.number_input("สัดส่วนการแทนที่ปูนซีเมนต์ (%)", min_value=0.0, max_value=50.0, value=20.0, step=1.0)
-        sg_scm = st.number_input("S.G. ของ SCMs", value=2.40 if "Fly Ash" in scm_type else 2.90, step=0.01)
+        scm_pct = st.number_input("สัดส่วนการแทนที่ปูนซีเมนต์ (%)", min_value=0.0, max_value=80.0, value=20.0, step=1.0)
+        sg_scm = st.number_input("S.G. ของ SCMs", value=2.40 if "เถ้าลอย" in scm_type else 2.90, step=0.01)
     else:
         scm_pct = 0.0
         sg_scm = 1.0
@@ -102,7 +124,7 @@ with col_f:
 # ==========================================
 # 3. สภาวะหน้างาน & สารผสมเพิ่ม
 # ==========================================
-st.header(" สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
+st.header("3. สภาวะหน้างาน & สารผสมเพิ่ม (Field & Admixtures)")
 col_g, col_h, col_i = st.columns(3)
 
 with col_g:
@@ -132,7 +154,7 @@ with col_i:
 # ==========================================
 # 4. ประเมินราคาต้นทุนวัสดุ
 # ==========================================
-st.header(" ประเมินราคาต้นทุนวัสดุ (Cost Estimation)")
+st.header("4. ประเมินราคาต้นทุนวัสดุ (Cost Estimation)")
 cost_1, cost_2, cost_3, cost_4, cost_5, cost_6 = st.columns(6)
 with cost_1: price_cement = st.number_input("ปูนซีเมนต์ (บาท/kg)", value=3.00, step=0.1)
 with cost_2: price_scm = st.number_input("SCMs (บาท/kg)", value=1.50, step=0.1)
@@ -249,15 +271,19 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
     fm_cube = fm_metric * 1.22 if specimen_type == "ทรงกระบอก (Cylinder)" else fm_metric
     fm_target = fm_cube / control_factor
     
-    if fm_cube > 80.0:
-        st.error("คำเตือน: ค่ากำลังอัดเทียบเท่า Cube เกินขอบเขตของสมการมาตรฐานวิจัย (Max 80 MPa)")
+    if fm_cube > 100.0 and "Hemp" not in agg_type:
+        st.error("คำเตือน: ค่ากำลังอัดเป้าหมายอยู่นอกเหนือสมการมาตรฐานวิจัยเชิงประจักษ์")
     else:
         if "Uncrushed" in agg_type:
             wc = (0.0002952 * (fm_target**2)) - (0.0312 * fm_target) + 1.291 if fm_target <= 42 else (0.00008519 * (fm_target**2)) - (0.01571 * fm_target) + 1.0097
         else:
             wc = (0.000295 * (fm_target**2)) - (0.0312 * fm_target) + 1.351 if fm_target <= 42 else (0.000008519 * (fm_target**2)) - (0.01571 * fm_target) + 1.0697
         
-        wc = max(0.25, min(0.95, wc))
+        # สำหรับ Hempcrete ยอมให้ W/C สูงได้
+        if "Hemp" in agg_type:
+            wc = max(0.25, min(1.5, wc))
+        else:
+            wc = max(0.25, min(0.95, wc))
 
         slump_mm = slump if unit_system == "SI Units (MPa, kg, mm)" else slump * 25.4
 
@@ -284,12 +310,18 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         elif ssdd_avg == 2.7: wdcc = -1.4480 * fwc + 2702.8337
         elif ssdd_avg == 2.6: wdcc = -1.2492 * fwc + 2410.3614
         elif ssdd_avg == 2.5: wdcc = -1.0996 * fwc + 2500.6876
+        elif "Hemp" in agg_type: wdcc = 400.0 # ความหนาแน่นโดยประมาณของ Hempcrete
         else: wdcc = -0.9809 * fwc + 2410.3614
             
         ac = wdcc - cm_total - fwc
-        pfa_ratio = calculate_pfa(max_agg, slump_mm, wc, passing_600)
-        fac = pfa_ratio * ac
-        cac = ac - fac
+        
+        if "Hemp" in agg_type:
+            fac = 0 # Hempcrete มักไม่ใช้ทราย
+            cac = ac
+        else:
+            pfa_ratio = calculate_pfa(max_agg, slump_mm, wc, passing_600)
+            fac = pfa_ratio * ac
+            cac = ac - fac
         
         s_od = fac / (1 + (abs_sand / 100))
         free_water_sand = s_od * ((mc_sand - abs_sand) / 100)
@@ -301,7 +333,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         
         w_batched = fwc - free_water_sand - free_water_gravel
         
-        # 🎯 ตรรกะคำนวณโมลด์ตัวอย่างแบบหลายก้อน (Multi-Mold Trial Mix)
         if specimen_type == "ทรงกระบอก (Cylinder)":
             r_m = (mold_dia / 2.0) / 100.0
             h_m = mold_h / 100.0
@@ -325,34 +356,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
 
         st.success("การประมวลผลเสร็จสมบูรณ์ (Calculation Completed Successfully)")
         
-        with st.expander("แสดงสมการที่ใช้ในการคำนวณ (Show Equations Used)"):
-            agg_label = "Uncrushed" if "Uncrushed" in agg_type else "Crushed"
-            slump_labels = ["0-10 mm", "10-30 mm", "30-60 mm", "60-180 mm"]
-            slump_idx_label = 0 if (slump if unit_system == "SI Units (MPa, kg, mm)" else slump*25.4) <= 10 else 1 if (slump if unit_system == "SI Units (MPa, kg, mm)" else slump*25.4) <= 30 else 2 if (slump if unit_system == "SI Units (MPa, kg, mm)" else slump*25.4) <= 60 else 3
-            st.markdown("**กำลังอัดเป้าหมาย**")
-            st.code(f"fm = fc_cube / CF = {fm_cube:.2f} / {control_factor} = {fm_target:.2f} MPa", language="text")
-            st.markdown("**W/C Ratio - DoE Parabolic Equation**")
-            st.code(f"ประเภท: {agg_label} | ช่วง: {'10-42 MPa' if fm_target <= 42 else '42-80 MPa'}\nW/C = {wc:.4f}  (จำกัด 0.25-0.95)", language="text")
-            st.markdown("**Free Water Content - DoE Table 3 (Lookup)**")
-            st.code(f"Max Agg: {max_agg}mm | {agg_label} | Slump: {slump_labels[slump_idx_label]}\nFWC = {fwc_base} kg/m3 * (1-{water_reduction*100:.0f}%) = {fwc:.1f} kg/m3", language="text")
-            st.markdown("**Cementitious Content**")
-            st.code(f"Cc = FWC/W/C = {fwc:.1f}/{wc:.4f} = {cm_total:.1f} kg/m3\nปูน = {cc:.1f} kg | SCMs = {scm_weight:.1f} kg ({scm_pct:.0f}%)", language="text")
-            st.markdown("**Wet Density - DoE Linear Equation**")
-            st.code(f"SSDD_avg = {ssdd_avg} -> Wdcc = {wdcc:.0f} kg/m3", language="text")
-            st.markdown("**Aggregate Content**")
-            st.code(f"Ac = {wdcc:.0f} - {cm_total:.1f} - {fwc:.1f} = {ac:.1f} kg/m3\nPFA = {pfa_ratio*100:.1f}% -> ทราย {fac:.1f} kg | หิน {cac:.1f} kg", language="text")
-            st.markdown("**Moisture Adjustment - ACI 211.1**")
-            st.code(f"ทราย Batched = {s_batched:.1f} kg (free water {free_water_sand:+.1f} kg)\nหิน  Batched = {g_batched:.1f} kg (free water {free_water_gravel:+.1f} kg)\nน้ำเติมจริง  = {w_batched:.1f} kg", language="text")
-            st.markdown("**สัดส่วนสำหรับหล่อตัวอย่าง (Trial Mix)**")
-            if specimen_type == "ทรงกระบอก (Cylinder)":
-                st.code(f"ปริมาตร 1 ก้อน (V1) = 3.1416 * ({mold_dia/200:.3f})^2 * {mold_h/100:.2f} = {single_mold_vol_m3:.6f} m3", language="text")
-            else:
-                st.code(f"ปริมาตร 1 ก้อน (V1) = {mold_w/100:.3f} * {mold_l/100:.3f} * {mold_h/100:.3f} = {single_mold_vol_m3:.6f} m3", language="text")
-            st.code(f"ปริมาตรรวม {num_molds} ก้อน (V_total) = V1 * {num_molds} = {total_mold_vol_m3:.6f} m3\n"
-                    f"ปริมาตรเผื่อผสม (V_mix) = V_total * (1 + {waste_pct/100:.2f}) = {trial_mix_vol:.6f} m3\n"
-                    f"น้ำหนักปูนสดต่อ 1 ก้อน (W_fresh) = V1 * Wdcc = {single_mold_vol_m3:.6f} * {wdcc:.0f} = {fresh_conc_weight_per_mold:.2f} kg\n"
-                    f"น้ำหนักชั่งรวมโมลด์ 1 ก้อน = {fresh_conc_weight_per_mold:.2f} + {mold_empty_wt:.2f} = {target_scale_weight_per_mold:.2f} kg", language="text")
-        
         res1, res2, res3, res4 = st.columns(4)
         res1.metric("กำลังอัดเป้าหมาย (fm)", f"{fm_target:.1f} MPa")
         res2.metric("อัตราส่วน W/C Ratio", f"{wc:.3f}")
@@ -360,10 +363,6 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
         res4.metric("การปล่อย CO2", f"{total_co2_m3:.1f} kg/m3")
         
         st.write("---")
-        st.markdown("### อัตราส่วนผสม (Mix Ratio)")
-        st.info(f"#### 1 : {(fac/cm_total):.2f} : {(cac/cm_total):.2f} \n*(วัสดุประสานรวม : ทราย : หิน)*")
-        st.write("---")
-        
         out_col1, out_col2 = st.columns([1.2, 1])
         
         with out_col1:
@@ -373,7 +372,7 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             if scm_pct > 0:
                 st.write(f"- วัสดุประสานทดแทน ({scm_type}): **{scm_weight:.1f} kg**")
             st.write(f"- ทราย (Fine Agg.): **{fac:.1f} kg**")
-            st.write(f"- หิน (Coarse Agg.): **{cac:.1f} kg**")
+            st.write(f"- หิน/มวลรวมทางเลือก (Coarse Agg.): **{cac:.1f} kg**")
             st.write(f"- น้ำ (Free Water): **{fwc:.1f} kg**")
             
             st.write("") 
@@ -386,19 +385,9 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             st.write(f"- น้ำ (เติมจริง): **{w_batched:.1f} kg** (- {free_water_sand + free_water_gravel:.1f} kg)")
             if admix_type != "ไม่มี (None)":
                 st.write(f"- ปริมาณสารลดน้ำ: **{admix_vol_liters:.2f} ลิตร**")
-                
-            st.write("")
-            st.markdown("### 3. รายการสั่งซื้อวัสดุรวม (Project BOQ)")
-            st.info(f"สำหรับปริมาตรคอนกรีตทั้งหมด: **{project_volume:,.1f} ลบ.ม.**")
-            st.write(f"- ปูนซีเมนต์: **{((cc * project_volume)/50):,.1f} ถุง** (ถุงละ 50 kg)")
-            if scm_pct > 0:
-                st.write(f"- {scm_type}: **{(scm_weight * project_volume)/1000:,.2f} ตัน**")
-            st.write(f"- ทราย: **{(s_batched * project_volume)/1000:,.2f} ตัน**")
-            st.write(f"- หิน/มวลรวม: **{(g_batched * project_volume)/1000:,.2f} ตัน**")
-            st.markdown(f"#### งบประมาณรวม: **{total_project_cost:,.2f} บาท**")
 
             st.write("")
-            st.markdown(f"### 4. สัดส่วนสำหรับหล่อตัวอย่าง {num_molds} ก้อน (Trial Mix)")
+            st.markdown(f"### 3. สัดส่วนสำหรับหล่อตัวอย่าง {num_molds} ก้อน (Trial Mix)")
             st.info(f"ปริมาตรรวม {num_molds} ก้อน: {total_mold_vol_m3:.6f} ลบ.ม. | ปริมาตรเผื่อผสม ({waste_pct:.0f}%): {trial_mix_vol:.6f} ลบ.ม.")
             st.write(f"- ปูนซีเมนต์: **{cc * trial_mix_vol:.2f} kg**")
             if scm_pct > 0:
@@ -411,7 +400,8 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             
             st.markdown("**เป้าหมายการตรวจสอบหน้าแล็บ (Quality Control)**")
             st.write(f"- น้ำหนักปูนสดต่อ 1 ก้อน (ตามทฤษฎี): **{fresh_conc_weight_per_mold:.2f} kg**")
-            st.write(f"- น้ำหนักเป้าหมายเมื่อชั่ง 1 ก้อนพร้อมโมลด์: **{target_scale_weight_per_mold:.2f} kg**")
+            if scale_mode == "ชั่งรวมน้ำหนักโมลด์เปล่า":
+                st.write(f"- น้ำหนักเป้าหมายเมื่อชั่ง 1 ก้อนพร้อมโมลด์: **{target_scale_weight_per_mold:.2f} kg**")
             st.write(f"*(อ้างอิงจากความหนาแน่นปูนสด Wdcc ที่คำนวณได้ = {wdcc:.0f} kg/m3)*")
 
         with out_col2:
@@ -419,8 +409,18 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
             
             a_coeff, b_coeff = 4.0, 0.85 
 
-            scm_early_penalty = (scm_pct / 100) * (0.25 if "Fly Ash" in scm_type else 0.15 if "Slag" in scm_type else 0.0)
-            scm_late_bonus    = (scm_pct / 100) * (0.10 if "Fly Ash" in scm_type else 0.08 if "Slag" in scm_type else 0.0)
+            if "แม่เมาะ" in scm_type:
+                scm_early_penalty = (scm_pct / 100) * 0.15 # แม่เมาะมี CaO สูง กำลังตกน้อยกว่า
+                scm_late_bonus    = (scm_pct / 100) * 0.20
+            elif "นำเข้า" in scm_type:
+                scm_early_penalty = (scm_pct / 100) * 0.25 
+                scm_late_bonus    = (scm_pct / 100) * 0.10
+            elif "Slag" in scm_type:
+                scm_early_penalty = (scm_pct / 100) * 0.15
+                scm_late_bonus    = (scm_pct / 100) * 0.08
+            else:
+                scm_early_penalty = 0.0
+                scm_late_bonus = 0.0
 
             days = [3, 7, 14, 21, 28, 56, 90]
             strengths_plain = [fm_target * (t / (a_coeff + b_coeff * t)) for t in days]
@@ -429,28 +429,17 @@ if st.button("ประมวลผลส่วนผสมคอนกรีต
                   * (1 + scm_late_bonus    * min(1, max(0, (d - 28) / 62)))
                 for s, d in zip(strengths_plain, days)
             ]
+            
             strength_df = pd.DataFrame({
-                "ปูนล้วน (MPa)": [round(x, 1) for x in strengths_plain],
-                "สูตรนี้ (MPa)": [round(x, 1) for x in strengths_actual],
+                "สูตรของคุณ (MPa)": [round(x, 1) for x in strengths_actual],
             }, index=days)
             strength_df.index.name = "อายุ (วัน)"
             st.line_chart(strength_df)
-            if scm_pct > 0:
-                st.caption(f"หมายเหตุ: {scm_type} {scm_pct:.0f}% ทำให้กำลังช่วงต้น (3-7 วัน) ต่ำกว่าปูนล้วน แต่กำลังระยะยาว (56-90 วัน) สูงกว่า")
-
-            st.markdown("### ดาวน์โหลดรายงาน (Export CSV)")
-            export_data = pd.DataFrame({
-                "รายการ": ["ปริมาตรรวม (m3)", "กำลังอัด (MPa)", "W/C Ratio", "ปูนซีเมนต์ (kg)", "SCMs (kg)", "ทราย Batched (kg)", "หิน Batched (kg)", "น้ำ (kg)", "น้ำยา (Liters)", "ต้นทุนรวม (THB)", "CO2 Emission (kg)"],
-                "ปริมาณที่ต้องใช้": [project_volume, fm_target, wc, cc*project_volume, scm_weight*project_volume, s_batched*project_volume, g_batched*project_volume, w_batched*project_volume, admix_vol_liters*project_volume, total_project_cost, total_co2_m3*project_volume]
-            })
-            csv = export_data.to_csv(index=False).encode('utf-8-sig')
-            st.download_button(
-                label="ดาวน์โหลดไฟล์ CSV (เปิดใน Excel ได้ทันที)",
-                data=csv,
-                file_name="Mix_Design_BOQ.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+            
+            # 🎯 เมนูตรวจสอบความแม่นยำกับงานวิจัย (Empirical Validation)
+            st.markdown("### ตรวจสอบความแม่นยำกับงานวิจัย (Empirical Data)")
+            st.info("อ้างอิงฐานข้อมูลจากเปเปอร์วิชาการเพื่อเทียบเคียงกับสูตรที่คุณออกแบบ")
+            st.dataframe(empirical_db)
 
         st.write("---")
         st.markdown("### บันทึกเพื่อเปรียบเทียบสูตร (Mix Design Comparison)")
