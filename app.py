@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-st.set_page_config(page_title=“Intelligent Mix Design System”, layout=“wide”, initial_sidebar_state=“collapsed”)
+st.set_page_config(page_title=“Intelligent Mix Design System”, layout=“wide”, initial_sidebar_state=“expanded”)
 
 # ==========================================
 
@@ -368,20 +368,256 @@ st.markdown(”””
 
 # ==========================================
 
-if ‘mix_history’ not in st.session_state:
+if “mix_history” not in st.session_state:
 st.session_state.mix_history = pd.DataFrame(columns=[“ชื่อสูตร”, “กำลังอัดเป้าหมาย (MPa)”, “ต้นทุนรวม (บาท)”, “การปล่อย CO2 (kg)”, “W/C Ratio”])
+if “current_page” not in st.session_state:
+st.session_state.current_page = “mix_design”
+if “submenu_design” not in st.session_state:
+st.session_state.submenu_design = True
+if “submenu_result” not in st.session_state:
+st.session_state.submenu_result = False
 
-unit_system = st.sidebar.radio(“ระบบหน่วย (Unit System)”, [“SI Units (MPa, kg, mm)”, “Inch-Pound Units (psi, lb, in)”])
-st.sidebar.markdown(”—”)
+# ==========================================
+
+# MULTI-LEVEL SIDEBAR NAVIGATION
+
+# ==========================================
+
 st.sidebar.markdown(”””
 
-<div style='font-size:0.75rem; color:#475569; font-family: JetBrains Mono, monospace;'>
-DoE Eq. 1–75<br>ACI PRC-211.1-22<br>ACI 209R<br><br>
-<span style='color:#6366f1;'>■</span> ระบบหน่วย SI / Inch-Pound<br>
-<span style='color:#10b981;'>■</span> รองรับ SCMs & Admixtures<br>
-<span style='color:#f59e0b;'>■</span> Moisture Adjustment อัตโนมัติ
+<style>
+/* ── Sidebar base ── */
+[data-testid="stSidebar"] {
+    background: #0d1117 !important;
+    border-right: 1px solid #1e293b !important;
+    min-width: 230px !important;
+}
+/* ── Hide default radio styling ── */
+[data-testid="stSidebar"] .stRadio > label { display: none !important; }
+[data-testid="stSidebar"] .stRadio > div { gap: 0 !important; }
+[data-testid="stSidebar"] .stRadio > div > label {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+/* ── Sidebar button style ── */
+[data-testid="stSidebar"] button {
+    background: transparent !important;
+    border: none !important;
+    color: #94a3b8 !important;
+    font-family: "Space Grotesk", sans-serif !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    padding: 9px 16px !important;
+    width: 100% !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+[data-testid="stSidebar"] button:hover {
+    background: rgba(99,102,241,0.1) !important;
+    color: #c7d2fe !important;
+}
+</style>
+
+“””, unsafe_allow_html=True)
+
+# ── Logo / App Name ──
+
+st.sidebar.markdown(”””
+
+<div style="padding: 20px 16px 12px; border-bottom: 1px solid #1e293b; margin-bottom: 8px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+        <div style="width:32px; height:32px; background:linear-gradient(135deg,#6366f1,#8b5cf6);
+                    border-radius:8px; display:flex; align-items:center; justify-content:center;
+                    font-size:1rem;">🧱</div>
+        <div>
+            <div style="font-size:0.85rem; font-weight:700; color:#f1f5f9;
+                        font-family:Space Grotesk,sans-serif;">MixDesign AI</div>
+            <div style="font-size:0.65rem; color:#6366f1; font-family:JetBrains Mono,monospace;
+                        letter-spacing:0.5px;">DoE + ACI 211.1-22</div>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
+
+# ── Unit System (hidden label) ──
+
+unit_system = st.sidebar.radio(
+“unit”, [“SI Units (MPa, kg, mm)”, “Inch-Pound Units (psi, lb, in)”],
+label_visibility=“collapsed”
+)
+
+# ── Nav helper ──
+
+def nav_item(icon, label, page_key, indent=False):
+is_active = st.session_state.current_page == page_key
+prefix = “    “ if indent else “”
+bg = “rgba(99,102,241,0.18)” if is_active else “transparent”
+color = “#a5b4fc” if is_active else “#94a3b8”
+border = “border-left:3px solid #6366f1;” if is_active else “border-left:3px solid transparent;”
+pl = “28px” if indent else “14px”
+st.sidebar.markdown(f”””
+<div onclick="void(0)" style="
+background:{bg}; {border}
+padding:8px {pl}; margin:1px 8px;
+border-radius:0 8px 8px 0; cursor:pointer;
+display:flex; align-items:center; gap:9px;">
+<span style="font-size:0.85rem;">{icon}</span>
+<span style="font-size:0.82rem; font-weight:{'600' if is_active else '400'};
+color:{color}; font-family:Space Grotesk,sans-serif;">{prefix}{label}</span>
+</div>
+“””, unsafe_allow_html=True)
+if st.sidebar.button(f”{label}”, key=f”nav_{page_key}”, use_container_width=True,
+label_visibility=“collapsed”):
+st.session_state.current_page = page_key
+st.rerun()
+
+def nav_group(icon, label, open_key):
+is_open = st.session_state[open_key]
+arrow = “▾” if is_open else “▸”
+st.sidebar.markdown(f”””
+<div style="padding:9px 14px; margin:1px 8px;
+display:flex; align-items:center; gap:9px;
+cursor:pointer;">
+<span style="font-size:0.85rem;">{icon}</span>
+<span style="font-size:0.82rem; font-weight:600; color:#e2e8f0;
+font-family:Space Grotesk,sans-serif; flex:1;">{label}</span>
+<span style="font-size:0.7rem; color:#6366f1;">{arrow}</span>
+</div>
+“””, unsafe_allow_html=True)
+if st.sidebar.button(f”toggle_{open_key}”, key=f”grp_{open_key}”,
+use_container_width=True, label_visibility=“collapsed”):
+st.session_state[open_key] = not st.session_state[open_key]
+st.rerun()
+
+# ── Section: หน้าหลัก ──
+
+st.sidebar.markdown(”””
+
+<div style="padding:4px 16px; font-size:0.62rem; color:#475569;
+            font-family:JetBrains Mono,monospace; letter-spacing:1px;
+            text-transform:uppercase; margin-top:8px;">เมนูหลัก</div>
+""", unsafe_allow_html=True)
+nav_item("🏠", "Dashboard", "dashboard")
+
+# ── Section: ออกแบบส่วนผสม (expandable) ──
+
+st.sidebar.markdown(”””
+
+<div style="padding:4px 16px; font-size:0.62rem; color:#475569;
+            font-family:JetBrains Mono,monospace; letter-spacing:1px;
+            text-transform:uppercase; margin-top:12px;">การออกแบบ</div>
+""", unsafe_allow_html=True)
+nav_group("📐", "ออกแบบส่วนผสม", "submenu_design")
+if st.session_state.submenu_design:
+    nav_item("⚙️", "กำหนดเกณฑ์ออกแบบ", "mix_design", indent=True)
+    nav_item("🧪", "สมบัติวัสดุ", "materials", indent=True)
+    nav_item("🏗️", "หน้างาน & สารผสมเพิ่ม", "field", indent=True)
+    nav_item("💰", "ประเมินต้นทุน", "cost", indent=True)
+
+# ── Section: ผลลัพธ์ ──
+
+st.sidebar.markdown(”””
+
+<div style="padding:4px 16px; font-size:0.62rem; color:#475569;
+            font-family:JetBrains Mono,monospace; letter-spacing:1px;
+            text-transform:uppercase; margin-top:12px;">ผลการคำนวณ</div>
+""", unsafe_allow_html=True)
+nav_group("📊", "ผลลัพธ์ & วิเคราะห์", "submenu_result")
+if st.session_state.submenu_result:
+    nav_item("📋", "สัดส่วนวัสดุ", "proportions", indent=True)
+    nav_item("📈", "กราฟพัฒนากำลัง", "strength_chart", indent=True)
+    nav_item("🔬", "เปรียบเทียบงานวิจัย", "empirical", indent=True)
+
+# ── Section: อื่นๆ ──
+
+st.sidebar.markdown(”””
+
+<div style="padding:4px 16px; font-size:0.62rem; color:#475569;
+            font-family:JetBrains Mono,monospace; letter-spacing:1px;
+            text-transform:uppercase; margin-top:12px;">อื่นๆ</div>
+""", unsafe_allow_html=True)
+nav_item("⚖️", "เปรียบเทียบสูตร", "compare")
+nav_item("📚", "แหล่งอ้างอิง", "references")
+
+# ── Footer sidebar ──
+
+st.sidebar.markdown(”””
+
+<div style="position:fixed; bottom:0; left:0; width:230px;
+            padding:12px 16px; border-top:1px solid #1e293b;
+            background:#0d1117;">
+    <div style="font-size:0.68rem; color:#374151; font-family:JetBrains Mono,monospace;">
+        v2.0 · DoE Eq.1-75 · ACI 211.1-22
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── Page routing: Dashboard ──
+
+if st.session_state.current_page == “dashboard”:
+st.markdown(”””
+<div class="hero-block">
+<div class="hero-badge">🏠 Dashboard</div>
+<div class="hero-title">ยินดีต้อนรับ</div>
+<div class="hero-sub">เลือกเมนูด้านซ้ายเพื่อเริ่มออกแบบส่วนผสมคอนกรีต</div>
+</div>
+“””, unsafe_allow_html=True)
+d1, d2, d3 = st.columns(3)
+d1.metric(“🧱 มาตรฐานที่รองรับ”, “DoE + ACI 211.1”)
+d2.metric(“📐 สมการ PFA”, “60 Equations”)
+d3.metric(“🌿 คำนวณ CO2”, “รองรับ”)
+st.info(“👈 เลือก **กำหนดเกณฑ์ออกแบบ** จากเมนูซ้ายเพื่อเริ่มต้น”)
+st.stop()
+
+elif st.session_state.current_page == “references”:
+st.markdown(”””
+<div class="hero-block">
+<div class="hero-badge">📚 References</div>
+<div class="hero-title">แหล่งอ้างอิง</div>
+</div>
+“””, unsafe_allow_html=True)
+st.markdown(”””
+**[1]** Aguwa, C. & Abubakar, M. (2025). *Development of a Simplified Methodology for British DoE Concrete Mix Design Procedure using Python.* NJEAS Vol.2, Issue 2.
+
+**[2]** ACI PRC-211.1-22 (2022). *Selecting Proportions for Normal-Density and High-Density Concrete.* American Concrete Institute.
+
+**[3]** ACI 209R (1997). *Prediction of Creep, Shrinkage, and Temperature Effects in Concrete Structures.*
+
+**[4]** Chindaprasirt, P. et al. *High Volume Fly Ash Concrete — Experimental Data.*
+
+**[5]** Tangtermsirikul, S. (SIIT). *Control OPC Type 1 Mix Data.*
+“””)
+st.stop()
+
+elif st.session_state.current_page == “compare”:
+st.markdown(”””
+<div class="section-header">
+<div class="section-icon">⚖️</div>
+<div>
+<div class="section-num">COMPARE</div>
+<div class="section-title">เปรียบเทียบสูตรที่บันทึกไว้</div>
+</div>
+</div>
+“””, unsafe_allow_html=True)
+if st.session_state.mix_history.empty:
+st.info(“ยังไม่มีสูตรที่บันทึก — กรุณาคำนวณและบันทึกสูตรก่อน”)
+else:
+st.dataframe(st.session_state.mix_history, use_container_width=True, hide_index=True)
+cc1, cc2 = st.columns(2)
+with cc1:
+st.markdown(”**ต้นทุนรวม (฿)**”)
+st.bar_chart(st.session_state.mix_history.set_index(“ชื่อสูตร”)[“ต้นทุนรวม (บาท)”])
+with cc2:
+st.markdown(”**CO2 Emission (kg)**”)
+st.bar_chart(st.session_state.mix_history.set_index(“ชื่อสูตร”)[“การปล่อย CO2 (kg)”])
+if st.button(“🗑️ ล้างข้อมูล”):
+st.session_state.mix_history = pd.DataFrame(columns=[“ชื่อสูตร”,“กำลังอัดเป้าหมาย (MPa)”,“ต้นทุนรวม (บาท)”,“การปล่อย CO2 (kg)”,“W/C Ratio”])
+st.rerun()
+st.stop()
 
 # Empirical DB
 
@@ -894,28 +1130,16 @@ else:
         })
         st.download_button("⬇️  ดาวน์โหลดไฟล์ CSV (เปิดใน Excel)", data=export_df.to_csv(index=False).encode("utf-8-sig"), file_name="MixDesign_BOQ.csv", mime="text/csv", use_container_width=True)
 
-    # ── COMPARISON SECTION ──
+    # ── SAVE TO COMPARE ──
     st.markdown("---")
-    st.markdown('<div class="result-title">บันทึก & เปรียบเทียบสูตร (Mix Design Comparison)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="result-title">💾 บันทึกสูตรนี้เพื่อเปรียบเทียบ</div>', unsafe_allow_html=True)
     save_col, _ = st.columns([2,3])
     with save_col:
         mix_name = st.text_input("ชื่อสูตร", "สูตรที่ 1: มาตรฐาน")
-        if st.button("💾  บันทึกสูตรนี้"):
+        if st.button("💾  บันทึกสูตร", use_container_width=True):
             new_row = pd.DataFrame([{"ชื่อสูตร": mix_name, "กำลังอัดเป้าหมาย (MPa)": round(fm_target,1), "ต้นทุนรวม (บาท)": round(total_project_cost,2), "การปล่อย CO2 (kg)": round(total_co2_m3*project_volume,1), "W/C Ratio": round(wc,3)}])
             st.session_state.mix_history = pd.concat([st.session_state.mix_history, new_row], ignore_index=True)
-
-    if not st.session_state.mix_history.empty:
-        st.dataframe(st.session_state.mix_history, use_container_width=True, hide_index=True)
-        cc1, cc2 = st.columns(2)
-        with cc1:
-            st.markdown('<div class="result-title">ต้นทุนรวม (฿)</div>', unsafe_allow_html=True)
-            st.bar_chart(st.session_state.mix_history.set_index("ชื่อสูตร")["ต้นทุนรวม (บาท)"])
-        with cc2:
-            st.markdown('<div class="result-title">CO₂ Emission (kg)</div>', unsafe_allow_html=True)
-            st.bar_chart(st.session_state.mix_history.set_index("ชื่อสูตร")["การปล่อย CO2 (kg)"])
-        if st.button("🗑️  ล้างข้อมูลเปรียบเทียบ"):
-            st.session_state.mix_history = pd.DataFrame(columns=["ชื่อสูตร","กำลังอัดเป้าหมาย (MPa)","ต้นทุนรวม (บาท)","การปล่อย CO2 (kg)","W/C Ratio"])
-            st.rerun()
+            st.success("บันทึกสำเร็จ! ดูผลได้ที่เมนู เปรียบเทียบสูตร ด้านซ้าย")
 ```
 
 # ==========================================
