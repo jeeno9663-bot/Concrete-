@@ -137,16 +137,48 @@ div[data-testid="stTextInput"] input {
     border: 1px solid #2d3748 !important;
     border-radius: 8px !important;
     color: #e2e8f0 !important;
-    font-family: 'JetBrains Mono', monospace !important;
-    font-size: 0.9rem !important;
-}
-div[data-testid="stNumberInput"] input:focus,
-div[data-testid="stTextInput"] input:focus {
-    border-color: #6366f1 !important;
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.2) !important;
-}
-div[data-testid="stSelectbox"] > div > div,
-div[data-testid="stRadio"] { color: #e2e8f0 !important; }
+    # ── Nav helper ──
+def nav_item(icon, label, page_key, indent=False):
+    is_active = st.session_state.current_page == page_key
+    prefix = "    " if indent else ""
+    bg = "rgba(99,102,241,0.18)" if is_active else "transparent"
+    color = "#a5b4fc" if is_active else "#94a3b8"
+    border = "border-left:3px solid #6366f1;" if is_active else "border-left:3px solid transparent;"
+    pl = "28px" if indent else "14px"
+    st.sidebar.markdown(f"""
+    <div onclick="void(0)" style="
+    background:{bg}; {border}
+    padding:8px {pl}; margin:1px 8px;
+    border-radius:0 8px 8px 0; cursor:pointer;
+    display:flex; align-items:center; gap:9px;">
+    <span style="font-size:0.85rem;">{icon}</span>
+    <span style="font-size:0.82rem; font-weight:{'600' if is_active else '400'};
+    color:{color}; font-family:Space Grotesk,sans-serif;">{prefix}{label}</span>
+    </div>
+    """, unsafe_allow_html=True)
+    # แก้ไขตรงนี้: ลบ label_visibility ออก
+    if st.sidebar.button(f"{label}", key=f"nav_{page_key}", use_container_width=True):
+        st.session_state.current_page = page_key
+        st.rerun()
+
+def nav_group(icon, label, open_key):
+    is_open = st.session_state[open_key]
+    arrow = "▾" if is_open else "▸"
+    st.sidebar.markdown(f"""
+    <div style="padding:9px 14px; margin:1px 8px;
+    display:flex; align-items:center; gap:9px;
+    cursor:pointer;">
+    <span style="font-size:0.85rem;">{icon}</span>
+    <span style="font-size:0.82rem; font-weight:600; color:#e2e8f0;
+    font-family:Space Grotesk,sans-serif; flex:1;">{label}</span>
+    <span style="font-size:0.7rem; color:#6366f1;">{arrow}</span>
+    </div>
+    """, unsafe_allow_html=True)
+    # แก้ไขตรงนี้: ลบ label_visibility ออก
+    if st.sidebar.button(f"toggle_{open_key}", key=f"grp_{open_key}", use_container_width=True):
+        st.session_state[open_key] = not st.session_state[open_key]
+        st.rerun()
+
 
 /* ─── Slider ─── */
 div[data-testid="stSlider"] [data-baseweb="slider"] [role="slider"] {
